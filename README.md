@@ -186,3 +186,18 @@ tests need internet access the first time to pull `hello-world` / `busybox`.
 ```bash
 python3 -m unittest discover -s tests -t .
 ```
+
+The suite needs no tools installed: every check reaches the system only through `which` and
+`run`, which the tests replace with a fake system described as plain data (see
+`tests/helpers.py`). It passes on Windows and on Linux (including WSL), and covers every line of
+`devenv_check`. The test files are organized by concept:
+
+- **Framework**: `test_runner.py` (running commands, version parsing), `test_platform_info.py`
+  (OS / distro / WSL detection), `test_probe.py` (locating tools), `test_environments.py` (status
+  aggregation, running checks), `test_install_hints.py`, `test_report.py`, `test_cli.py` and
+  `test_smoke_framework.py` (the machinery behind `--deep`).
+- **One file per environment**: `test_git.py`, `test_bash.py`, `test_java.py`, `test_kotlin.py`,
+  `test_go.py`, `test_rust.py`, `test_dart.py`, `test_flutter.py`, `test_python.py`,
+  `test_php.py`, `test_ruby.py`, `test_perl.py`, `test_node.py`, `test_cpp.py`, `test_dotnet.py`,
+  `test_docker.py`, `test_kubernetes.py`, `test_vscode.py` and `test_intellij.py`. Each holds
+  that environment's installation check, its hello world test and its install hints.
