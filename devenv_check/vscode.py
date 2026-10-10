@@ -45,6 +45,7 @@ EXTENSIONS: list[ExtensionSpec] = [
     ExtensionSpec("PHP (Intelephense)", ("bmewburn.vscode-intelephense-client",)),
     ExtensionSpec("PHP debugging (Xdebug)", ("xdebug.php-debug",), required=False),
     ExtensionSpec("Ruby (Ruby LSP)", ("shopify.ruby-lsp",)),
+    ExtensionSpec("Perl (Perl Navigator)", ("bscan.perlnavigator", "richterger.perl")),
     ExtensionSpec("Dart", ("dart-code.dart-code",)),
     ExtensionSpec("Flutter", ("dart-code.flutter",)),
     ExtensionSpec("ESLint (JS/TS)", ("dbaeumer.vscode-eslint",), required=False,

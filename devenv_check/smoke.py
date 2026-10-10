@@ -299,6 +299,30 @@ def smoke_ruby(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Too
     )]
 
 
+# --------------------------------------------------------------------------- Perl
+
+PERL_SCRIPT = """use strict;
+use warnings;
+use List::Util qw(sum);
+
+my %greeting = (who => 'Perl', parts => [1, 2, 3]);
+die "core modules broken\\n" unless sum(@{ $greeting{parts} }) == 6;
+print "hello from $greeting{who}\\n";
+"""
+
+
+def smoke_perl(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    perl = _find(tools, "perl")
+    if not _usable(perl):
+        return [_skipped("hello: Perl", "perl not available")]
+    _write(work / "hello.pl", PERL_SCRIPT)
+    return [build_and_run(
+        "hello: Perl",
+        [([perl.path, "-c", "hello.pl"], 30), ([perl.path, "hello.pl"], 30)],
+        "hello from Perl", work, detail="syntax check (perl -c) + run with strict, warnings and a core module",
+    )]
+
+
 # --------------------------------------------------------------------------- Go
 
 
@@ -474,6 +498,7 @@ SMOKE_TESTS: dict[str, Callable[[PlatformInfo, list[ToolResult], Path], list[Too
     "python": smoke_python,
     "php": smoke_php,
     "ruby": smoke_ruby,
+    "perl": smoke_perl,
     "node": smoke_node,
     "cpp": smoke_cpp,
     "dotnet": smoke_dotnet,

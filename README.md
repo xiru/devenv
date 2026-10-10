@@ -2,7 +2,7 @@
 
 Checks whether the current computer has the global tooling needed to develop,
 test and run applications in Bash, Java/Kotlin (with Gradle), Go, Rust,
-Dart/Flutter, Python 3, PHP, Ruby, JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes —
+Dart/Flutter, Python 3, PHP, Ruby, Perl, JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes —
 plus Git and Visual Studio Code:
 
 | Environment | Required | Optional (reported as *partial* when missing) |
@@ -18,6 +18,7 @@ plus Git and Visual Studio Code:
 | Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | `virtualenv` |
 | PHP + Composer | `php` (≥ 8.2), `composer` | |
 | Ruby + Bundler | `ruby` (≥ 3.2; macOS's deprecated system Ruby is flagged), `gem`, `bundle` | `ridk` (RubyInstaller's MSYS2 devkit for native gems, Windows only) |
+| Perl | `perl` (≥ 5.32), the CPAN module installer (checked by loading `CPAN.pm`, so `cpan`'s interactive first-run setup never starts) | `cpanm` |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` | global `tsc` |
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` or `ninja` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
@@ -46,6 +47,7 @@ is a recommendation (*partial*), not a failure, and comes with install/update in
 | Python | `ms-python.python` (includes Pylance and the debugger) |
 | PHP | `bmewburn.vscode-intelephense-client`; `xdebug.php-debug` optional |
 | Ruby | `shopify.ruby-lsp` |
+| Perl | `bscan.perlnavigator` (or `richterger.perl`) |
 | Dart | `dart-code.dart-code` |
 | Flutter | `dart-code.flutter` |
 | JavaScript / TypeScript | built into VS Code; `dbaeumer.vscode-eslint` optional |
@@ -91,12 +93,22 @@ python3 -m devenv_check
 
 On Windows use `python` or `py` instead of `python3` if that is how Python is exposed.
 
+Only the environments you use most (Python, Go and Java unless `DEVENV_CHECK_FAVORITES` says otherwise):
+
+```bash
+python3 -m devenv_check --favorites
+```
+
 Options:
 
 ```
+--favorites        check only your favorite environments: python, go and java by default;
+                   set DEVENV_CHECK_FAVORITES=env1,env2 to choose others (not combinable
+                   with --only)
 --deep             also build and run a hello world program in every environment
 --only java,go     check a subset: git, bash, java, kotlin, go, rust, dart, flutter,
-                   python, php, ruby, node, cpp, dotnet, docker, kubernetes, vscode
+                   python, php, ruby, perl, node, cpp, dotnet, docker, kubernetes,
+                   vscode
 --offline          skip VS Code / extension / IntelliJ IDEA update checks (no network access)
 --json             machine readable output (includes the fix commands)
 -v, --verbose      show where each tool was found
@@ -138,6 +150,7 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Dart | `dart compile exe` (native AOT executable), then the executable is run |
 | Python 3 | creates a `.venv`, runs `pip --version` and a script with the venv's interpreter (no network) |
 | PHP + Composer | `composer dump-autoload` generates a PSR-4 autoloader for a small class, then `php` runs a script through `vendor/autoload.php` (no network; plain `php` if Composer is missing) |
+| Perl | `perl -c` syntax check, then a `use strict; use warnings;` script using a core module (`List::Util`) |
 | Ruby + Bundler | `bundle install --local` with an empty Gemfile, then `bundle exec ruby` runs a script (no network; plain `ruby` if Bundler is missing) |
 | Flutter | `flutter create` of the template app, then `flutter test` runs its widget test headless — no device or emulator needed. The first run downloads the template's packages into the pub cache |
 | Java + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon` |

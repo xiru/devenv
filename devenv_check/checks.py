@@ -32,6 +32,7 @@ MIN_VERSIONS: dict[str, tuple[int, ...]] = {
     "python": (3, 11),
     "php": (8, 2),
     "ruby": (3, 2),
+    "perl": (5, 32),
     "go": (1, 22),
     "node": (22,),
     "dotnet": (8,),
@@ -527,6 +528,28 @@ def check_ruby(p: PlatformInfo) -> list[ToolResult]:
     return tools
 
 
+# --------------------------------------------------------------------------- Perl
+
+
+def check_perl(p: PlatformInfo) -> list[ToolResult]:
+    # `perl -v`: "This is perl 5, version 38, subversion 2 (v5.38.2) built for x86_64-linux-gnu-thread-multi"
+    perl = probe("perl", ["perl", "-v"], pattern=r"\(v(\d+)\.(\d+)\.(\d+)\)", min_version=MIN_VERSIONS["perl"], hint="perl")
+    if perl.status is Status.MISSING and p.system == "windows" and not perl.path:
+        git_perl = Path(os.environ.get("ProgramFiles", r"C:\Program Files"), "Git", "usr", "bin", "perl.exe")
+        if git_perl.is_file():
+            perl.detail = "only Git for Windows' internal perl exists (meant for git itself); install Strawberry Perl"
+    if not perl.path or perl.status is Status.MISSING:
+        return [perl]
+    # Ask perl whether CPAN.pm loads instead of running `cpan`, which may start an interactive setup.
+    cpan_res = run([perl.path, "-MCPAN", "-e", "print $CPAN::VERSION"], timeout=30)
+    cpan_version = parse_version(cpan_res.stdout, r"(\d+)\.(\d+)") if cpan_res.ok else None
+    cpan = (ToolResult("CPAN (module installer)", Status.OK, version=format_version(cpan_version), detail="CPAN.pm")
+            if cpan_version else
+            ToolResult("CPAN (module installer)", Status.MISSING, hint="cpan", detail="the CPAN module is not installed"))
+    cpanm = probe("cpanm (cpanminus)", ["cpanm", "--version"], pattern=r"version (\d+)\.(\d+)", required=False, hint="cpanm")
+    return [perl, cpan, cpanm]
+
+
 # --------------------------------------------------------------------------- Go
 
 
@@ -722,6 +745,7 @@ ENVIRONMENTS: dict[str, tuple[str, Callable[[PlatformInfo], list[ToolResult]]]] 
     "python": ("Python 3", check_python),
     "php": ("PHP + Composer", check_php),
     "ruby": ("Ruby + Bundler", check_ruby),
+    "perl": ("Perl", check_perl),
     "node": ("JavaScript / TypeScript (Node.js)", check_node),
     "cpp": ("C / C++", check_cpp),
     "dotnet": ("C# (.NET)", check_dotnet),

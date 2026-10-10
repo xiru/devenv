@@ -572,6 +572,53 @@ _PHP_RUBY_HINTS: dict[str, dict[str, list[str]]] = {
 for _family, _extra in _PHP_RUBY_HINTS.items():
     HINTS.setdefault(_family, {}).update(_extra)
 
+# Perl, the CPAN module installer and cpanminus.
+_CPANM_BOOTSTRAP = ["curl -L https://cpanmin.us | perl - --sudo App::cpanminus"]
+_PERL_HINTS: dict[str, dict[str, list[str]]] = {
+    "windows": {
+        "perl": ["winget install --id StrawberryPerl.StrawberryPerl -e   (includes cpan, cpanm and a C compiler)"],
+        "cpan": ["Reinstall Strawberry Perl, which bundles CPAN"],
+        "cpanm": ["cpan App::cpanminus   (Strawberry Perl already ships cpanm)"],
+    },
+    "macos": {
+        "perl": ["brew install perl   (the macOS system perl is deprecated)"],
+        "cpan": ["brew reinstall perl"],
+        "cpanm": ["brew install cpanminus"],
+    },
+    "linux": {
+        "perl": ["Install perl with your distribution's package manager"],
+        "cpan": ["Install your distribution's CPAN package (e.g. perl-CPAN)"],
+        "cpanm": _CPANM_BOOTSTRAP,
+    },
+    "debian": {
+        "perl": ["sudo apt update && sudo apt install -y perl build-essential"],
+        "cpan": ["sudo apt install -y perl   (CPAN ships in perl-modules)"],
+        "cpanm": ["sudo apt install -y cpanminus"],
+    },
+    "fedora": {
+        "perl": ["sudo dnf install -y perl perl-CPAN gcc make"],
+        "cpan": ["sudo dnf install -y perl-CPAN"],
+        "cpanm": ["sudo dnf install -y perl-App-cpanminus"],
+    },
+    "arch": {
+        "perl": ["sudo pacman -S --needed perl base-devel"],
+        "cpan": ["sudo pacman -S --needed perl   (CPAN is part of the perl package)"],
+        "cpanm": ["sudo pacman -S --needed cpanminus"],
+    },
+    "suse": {
+        "perl": ["sudo zypper install -y perl gcc make"],
+        "cpanm": ["sudo zypper install -y perl-App-cpanminus"],
+    },
+}
+for _family, _extra in _PERL_HINTS.items():
+    HINTS.setdefault(_family, {}).update(_extra)
+
+DOCS.update({
+    "perl": "https://www.perl.org/get.html",
+    "cpan": "https://www.cpan.org/modules/INSTALL.html",
+    "cpanm": "https://metacpan.org/pod/App::cpanminus",
+})
+
 # Hint keys that only exist on some systems (the matching check never runs elsewhere).
 PLATFORM_ONLY: dict[str, set[str]] = {"ridk": {"windows"}}
 

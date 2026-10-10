@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from . import __version__
@@ -10,16 +11,39 @@ from .checks import ENVIRONMENTS, SETTINGS, Status, run_checks
 from .platform_info import detect
 from .report import make_style, render_json, render_text
 
+# Environments checked by --favorites; DEVENV_CHECK_FAVORITES="python,go,java" overrides them.
+DEFAULT_FAVORITES = ["python", "go", "java"]
+
+
+def _environment_list(value: str, parser: argparse.ArgumentParser, source: str) -> list[str]:
+    keys = [key.strip().lower() for key in value.split(",") if key.strip()]
+    unknown = [key for key in keys if key not in ENVIRONMENTS]
+    if unknown or not keys:
+        parser.error(f"{source}: unknown environment(s) {', '.join(unknown) or '(none given)'}; "
+                     f"choose from {', '.join(ENVIRONMENTS)}")
+    return keys
+
+
+def favorites(parser: argparse.ArgumentParser) -> list[str]:
+    configured = os.environ.get("DEVENV_CHECK_FAVORITES")
+    if configured:
+        return _environment_list(configured, parser, "DEVENV_CHECK_FAVORITES")
+    return list(DEFAULT_FAVORITES)
+
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="devenv_check",
         description="Check whether this computer is ready to develop, test and run "
-        "Bash, Java/Kotlin/Gradle, Go, Rust, Dart/Flutter, Python, PHP, Ruby, Node/TypeScript, C/C++, C#/.NET, Docker and Kubernetes projects, "
-        "with Git and Visual Studio Code.",
+        "Bash, Java/Kotlin/Gradle, Go, Rust, Dart/Flutter, Python, PHP, Ruby, Perl, Node/TypeScript, C/C++, C#/.NET, "
+        "Docker and Kubernetes projects, with Git and Visual Studio Code.",
     )
-    parser.add_argument("--only", metavar="ENV[,ENV...]",
-                        help=f"check only these environments: {', '.join(ENVIRONMENTS)}")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--only", metavar="ENV[,ENV...]",
+                           help=f"check only these environments: {', '.join(ENVIRONMENTS)}")
+    selection.add_argument("--favorites", action="store_true",
+                           help=f"check only your favorite environments ({', '.join(DEFAULT_FAVORITES)} by default; "
+                                "set DEVENV_CHECK_FAVORITES=env1,env2 to change them)")
     parser.add_argument("--deep", action="store_true",
                         help="also build and run a hello world program in every environment (slower; "
                              "Docker/Kubernetes tests pull small public images)")
@@ -34,11 +58,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     args = parser.parse_args(argv)
 
     if args.only:
-        keys = [key.strip().lower() for key in args.only.split(",") if key.strip()]
-        unknown = [key for key in keys if key not in ENVIRONMENTS]
-        if unknown:
-            parser.error(f"unknown environment(s): {', '.join(unknown)}; choose from {', '.join(ENVIRONMENTS)}")
-        args.only = keys
+        args.only = _environment_list(args.only, parser, "--only")
+    elif args.favorites:
+        args.only = favorites(parser)
     return args
 
 

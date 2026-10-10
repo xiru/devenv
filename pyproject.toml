@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devenv-check"
-version = "0.5.0"
-description = "Check a computer for Bash, Java/Kotlin/Gradle, Go, Rust, Dart/Flutter, Python, PHP, Ruby, Node/TypeScript, C/C++, C#, Docker, Kubernetes, Git and VS Code development tooling"
+version = "0.6.0"
+description = "Check a computer for Bash, Java/Kotlin/Gradle, Go, Rust, Dart/Flutter, Python, PHP, Ruby, Perl, Node/TypeScript, C/C++, C#, Docker, Kubernetes, Git and VS Code development tooling"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
