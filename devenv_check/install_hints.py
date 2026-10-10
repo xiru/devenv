@@ -516,6 +516,65 @@ _PYTHON_HINTS: dict[str, dict[str, list[str]]] = {
 for _family, _extra in _PYTHON_HINTS.items():
     HINTS.setdefault(_family, {}).update(_extra)
 
+# PHP + Composer and Ruby + Bundler.
+_COMPOSER_INSTALLER = [
+    "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\"",
+    "php composer-setup.php --install-dir=$HOME/.local/bin --filename=composer && rm composer-setup.php",
+]
+_GEM_BUNDLER = ["gem install bundler   (add --user-install for a system Ruby)"]
+_PHP_RUBY_HINTS: dict[str, dict[str, list[str]]] = {
+    "windows": {
+        "php": ["winget install --id PHP.PHP.8.5 -e"],
+        "composer": [
+            "# Composer is not in winget: run the official installer (it finds php and updates PATH)",
+            "https://getcomposer.org/Composer-Setup.exe   (or: scoop install composer)",
+        ],
+        "ruby": ["winget install --id RubyInstallerTeam.RubyWithDevKit.4.0 -e", "ridk install   (then choose the MSYS2 development toolchain)"],
+        "bundler": _GEM_BUNDLER,
+        "ridk": ["ridk install   (choose: MSYS2 and MINGW development toolchain)"],
+    },
+    "macos": {
+        "php": ["brew install php"],
+        "composer": ["brew install composer"],
+        "ruby": ["brew install ruby",
+                 "echo 'export PATH=\"$(brew --prefix ruby)/bin:$PATH\"' >> ~/.zshrc   (Homebrew Ruby is keg-only)"],
+        "bundler": _GEM_BUNDLER,
+    },
+    "linux": {
+        "php": ["Install the PHP CLI (php-cli, plus php-xml, php-mbstring, php-curl, php-zip) with your package manager"],
+        "composer": _COMPOSER_INSTALLER,
+        "ruby": ["Install ruby (with its -dev/-devel headers) with your package manager, or use rbenv: https://github.com/rbenv/rbenv"],
+        "bundler": _GEM_BUNDLER,
+    },
+    "debian": {
+        "php": ["sudo apt update && sudo apt install -y php-cli php-xml php-mbstring php-curl php-zip unzip"],
+        "composer": ["sudo apt install -y composer   (or the official installer for the newest release)"],
+        "ruby": ["sudo apt update && sudo apt install -y ruby-full build-essential"],
+        "bundler": ["sudo apt install -y ruby-bundler"],
+    },
+    "fedora": {
+        "php": ["sudo dnf install -y php-cli php-xml php-mbstring php-zip"],
+        "composer": ["sudo dnf install -y composer"],
+        "ruby": ["sudo dnf install -y ruby ruby-devel gcc make"],
+        "bundler": ["sudo dnf install -y rubygem-bundler"],
+    },
+    "arch": {
+        "php": ["sudo pacman -S --needed php"],
+        "composer": ["sudo pacman -S --needed composer"],
+        "ruby": ["sudo pacman -S --needed ruby base-devel"],
+        "bundler": ["sudo pacman -S --needed ruby-bundler"],
+    },
+    "suse": {
+        "php": ["sudo zypper install -y php8 php8-cli php8-mbstring php8-zip"],
+        "ruby": ["sudo zypper install -y ruby ruby-devel gcc make"],
+    },
+}
+for _family, _extra in _PHP_RUBY_HINTS.items():
+    HINTS.setdefault(_family, {}).update(_extra)
+
+# Hint keys that only exist on some systems (the matching check never runs elsewhere).
+PLATFORM_ONLY: dict[str, set[str]] = {"ridk": {"windows"}}
+
 DOCS.update({
     "dart": "https://dart.dev/get-dart",
     "flutter": "https://docs.flutter.dev/get-started/install",
@@ -526,6 +585,11 @@ DOCS.update({
     "pip": "https://pip.pypa.io/en/stable/installation/",
     "venv": "https://docs.python.org/3/library/venv.html",
     "virtualenv": "https://virtualenv.pypa.io/en/latest/installation.html",
+    "php": "https://www.php.net/manual/en/install.php",
+    "composer": "https://getcomposer.org/download/",
+    "ruby": "https://www.ruby-lang.org/en/documentation/installation/",
+    "bundler": "https://bundler.io/",
+    "ridk": "https://github.com/oneclick/rubyinstaller2/wiki/The-ridk-tool",
 })
 
 PACKAGE_MANAGER_LABEL = {

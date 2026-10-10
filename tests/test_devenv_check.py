@@ -81,12 +81,14 @@ class LinuxFamilyTest(unittest.TestCase):
 
 
 class HintsTest(unittest.TestCase):
-    def all_hint_keys(self):
-        return set(install_hints.DOCS)
+    def all_hint_keys(self, family="linux"):
+        """Every hint key that applies to `family` (some keys are platform-specific)."""
+        return {key for key in install_hints.DOCS
+                if family in install_hints.PLATFORM_ONLY.get(key, {family})}
 
     def test_every_key_has_a_hint_on_every_family(self):
         for family in FAMILIES:
-            for key in self.all_hint_keys():
+            for key in self.all_hint_keys(family):
                 with self.subTest(family=family, key=key):
                     self.assertTrue(install_hints.hint_for(key, platform_for(family)))
 
@@ -103,6 +105,12 @@ class HintsTest(unittest.TestCase):
         for key in self.all_hint_keys():
             with self.subTest(key=key):
                 self.assertTrue(install_hints.hint_for(key, wsl))
+
+    def test_platform_only_keys_are_covered_where_they_apply(self):
+        for key, families in install_hints.PLATFORM_ONLY.items():
+            for family in families:
+                with self.subTest(key=key, family=family):
+                    self.assertTrue(install_hints.hint_for(key, platform_for(family)))
 
     def test_arch_placeholder_is_filled(self):
         lines = install_hints.hint_for("kubectl", PlatformInfo("linux", "linux", "x", "arm64"))

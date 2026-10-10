@@ -30,6 +30,8 @@ MIN_VERSIONS: dict[str, tuple[int, ...]] = {
     "dart": (3, 0),
     "flutter": (3, 22),
     "python": (3, 11),
+    "php": (8, 2),
+    "ruby": (3, 2),
     "go": (1, 22),
     "node": (22,),
     "dotnet": (8,),
@@ -495,6 +497,36 @@ def check_python(p: PlatformInfo) -> list[ToolResult]:
     return [python, pip, check_venv(exe), virtualenv]
 
 
+# --------------------------------------------------------------------------- PHP
+
+
+def check_php(p: PlatformInfo) -> list[ToolResult]:
+    php = probe("php", ["php", "--version"], pattern=r"PHP (\d+)\.(\d+)\.(\d+)", min_version=MIN_VERSIONS["php"], hint="php")
+    # Composer runs on PHP, so it only works once php does; --no-ansi keeps the output parseable.
+    composer = probe("composer", ["composer", "--version", "--no-ansi", "--no-interaction"],
+                     pattern=r"Composer (?:version )?(\d+)\.(\d+)\.(\d+)", hint="composer", timeout=60)
+    return [php, composer]
+
+
+# --------------------------------------------------------------------------- Ruby
+
+
+def check_ruby(p: PlatformInfo) -> list[ToolResult]:
+    ruby = probe("ruby", ["ruby", "--version"], pattern=r"ruby (\d+)\.(\d+)\.(\d+)", min_version=MIN_VERSIONS["ruby"], hint="ruby")
+    if ruby.status is Status.WARN and p.system == "macos" and ruby.path == "/usr/bin/ruby":
+        ruby.detail = "macOS system Ruby is outdated and deprecated; install Homebrew Ruby"
+    tools = [
+        ruby,
+        probe("gem (RubyGems)", ["gem", "--version"], hint="ruby", timeout=60),
+        probe("bundler", ["bundle", "--version"], pattern=r"Bundler version (\d+)\.(\d+)\.(\d+)", hint="bundler", timeout=60),
+    ]
+    if p.system == "windows":
+        # RubyInstaller's MSYS2 devkit is what compiles gems with native extensions on Windows.
+        tools.append(probe("ridk (MSYS2 devkit)", ["ridk", "version"], pattern=r"version: (\d+)\.(\d+)\.(\d+)",
+                           required=False, hint="ridk", timeout=60))
+    return tools
+
+
 # --------------------------------------------------------------------------- Go
 
 
@@ -688,6 +720,8 @@ ENVIRONMENTS: dict[str, tuple[str, Callable[[PlatformInfo], list[ToolResult]]]] 
     "dart": ("Dart", check_dart),
     "flutter": ("Flutter", check_flutter),
     "python": ("Python 3", check_python),
+    "php": ("PHP + Composer", check_php),
+    "ruby": ("Ruby + Bundler", check_ruby),
     "node": ("JavaScript / TypeScript (Node.js)", check_node),
     "cpp": ("C / C++", check_cpp),
     "dotnet": ("C# (.NET)", check_dotnet),

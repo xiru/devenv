@@ -253,6 +253,52 @@ def smoke_python(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[T
     )]
 
 
+# --------------------------------------------------------------------------- PHP
+
+
+def smoke_php(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    php, composer = _find(tools, "php"), _find(tools, "composer")
+    if not _usable(php):
+        return [_skipped("hello: PHP + Composer autoload", "php not available")]
+    _write(work / "src" / "Greeter.php",
+           "<?php\n\nnamespace Hello;\n\nfinal class Greeter\n{\n"
+           "    public function greet(string $who): string\n    {\n        return \"hello from {$who}\";\n    }\n}\n")
+    if not _usable(composer):
+        _write(work / "hello.php", "<?php\nrequire __DIR__ . '/src/Greeter.php';\necho (new Hello\\Greeter())->greet('PHP'), PHP_EOL;\n")
+        return [build_and_run("hello: PHP", [([php.path, "hello.php"], 30)], "hello from PHP", work,
+                              detail="ran with php (composer not available)")]
+    # Composer generates a PSR-4 autoloader without any network access (no dependencies).
+    _write(work / "composer.json", '{\n    "name": "devenv/hello",\n    "autoload": {"psr-4": {"Hello\\\\": "src/"}}\n}\n')
+    _write(work / "hello.php", "<?php\nrequire __DIR__ . '/vendor/autoload.php';\necho (new Hello\\Greeter())->greet('PHP'), PHP_EOL;\n")
+    return [build_and_run(
+        "hello: PHP + Composer autoload",
+        [([composer.path, "dump-autoload", "--no-interaction", "--no-ansi", "--quiet"], 120), ([php.path, "hello.php"], 30)],
+        "hello from PHP", work, env={"COMPOSER_NO_INTERACTION": "1"},
+        detail="composer dump-autoload (PSR-4) + php",
+    )]
+
+
+# --------------------------------------------------------------------------- Ruby
+
+
+def smoke_ruby(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    ruby, bundler = _find(tools, "ruby"), _find(tools, "bundler")
+    if not _usable(ruby):
+        return [_skipped("hello: Ruby + Bundler", "ruby not available")]
+    _write(work / "hello.rb", "class Greeter\n  def greet(who)\n    \"hello from #{who}\"\n  end\nend\n\nputs Greeter.new.greet(\"Ruby\")\n")
+    if not _usable(bundler):
+        return [build_and_run("hello: Ruby", [([ruby.path, "hello.rb"], 30)], "hello from Ruby", work,
+                              detail="ran with ruby (bundler not available)")]
+    # An empty Gemfile resolves with --local (no network) and still exercises bundle install/exec.
+    _write(work / "Gemfile", 'source "https://rubygems.org"\n')
+    env = {"BUNDLE_GEMFILE": str(work / "Gemfile"), "BUNDLE_APP_CONFIG": str(work / ".bundle")}
+    return [build_and_run(
+        "hello: Ruby + Bundler",
+        [([bundler.path, "install", "--local", "--quiet"], 180), ([bundler.path, "exec", "ruby", "hello.rb"], 60)],
+        "hello from Ruby", work, env=env, detail="bundle install --local + bundle exec ruby",
+    )]
+
+
 # --------------------------------------------------------------------------- Go
 
 
@@ -426,6 +472,8 @@ SMOKE_TESTS: dict[str, Callable[[PlatformInfo, list[ToolResult], Path], list[Too
     "dart": smoke_dart,
     "flutter": smoke_flutter,
     "python": smoke_python,
+    "php": smoke_php,
+    "ruby": smoke_ruby,
     "node": smoke_node,
     "cpp": smoke_cpp,
     "dotnet": smoke_dotnet,
