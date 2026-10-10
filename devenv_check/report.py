@@ -32,6 +32,7 @@ def enable_windows_ansi() -> bool:
 class Style:
     def __init__(self, color: bool, unicode: bool):
         self.color = color
+        self.sep = " · " if unicode else " | "
         if unicode:
             self.ok, self.warn, self.missing, self.optional, self.skipped = "✔", "!", "✘", "○", "·"
         else:
@@ -128,7 +129,7 @@ def render_text(platform: PlatformInfo, results: list[EnvResult], style: Style, 
     py = ".".join(map(str, sys.version_info[:3]))
     deep = any(_hello_tests(env) for env in results)
     out.append(style.bold("Development environment check" + (" (deep: hello world build & run)" if deep else "")))
-    out.append(style.dim(f"{platform.name} · {platform.arch} · Python {py}"))
+    out.append(style.dim(style.sep.join([platform.name, platform.arch, f"Python {py}"])))
     out.append("")
 
     for env in results:

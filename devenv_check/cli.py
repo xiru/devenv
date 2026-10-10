@@ -15,7 +15,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="devenv_check",
         description="Check whether this computer is ready to develop, test and run "
-        "Bash, Java/Kotlin/Gradle, Go, Rust, Node/TypeScript, C/C++, C#/.NET, Docker and Kubernetes projects, "
+        "Bash, Java/Kotlin/Gradle, Go, Rust, Dart/Flutter, Node/TypeScript, C/C++, C#/.NET, Docker and Kubernetes projects, "
         "with Git and Visual Studio Code.",
     )
     parser.add_argument("--only", metavar="ENV[,ENV...]",

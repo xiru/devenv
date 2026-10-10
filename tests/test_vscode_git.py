@@ -23,20 +23,20 @@ class InstalledExtensionsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, "extensions.json").write_text(json.dumps([
                 manifest_entry("golang.Go", "0.56.1"),
-                manifest_entry("redhat.java", "1.57.2026093008", prerelease=True),
+                manifest_entry("rust-lang.rust-analyzer", "0.4.3078", prerelease=True),
             ]))
             found = vscode.installed_extensions(Path(tmp))
         self.assertEqual(found["golang.go"].version, "0.56.1")
-        self.assertTrue(found["redhat.java"].prerelease)
+        self.assertTrue(found["rust-lang.rust-analyzer"].prerelease)
 
     def test_falls_back_to_folder_names(self):
         with tempfile.TemporaryDirectory() as tmp:
-            for name in ("ms-vscode.cpptools-1.34.4-win32-x64", "vscjava.vscode-java-pack-0.31.1",
+            for name in ("ms-vscode.cpptools-1.34.4-win32-x64", "rust-lang.rust-analyzer-0.3.3073-win32-x64",
                          "golang.go-0.55.0", "golang.go-0.56.1"):
                 Path(tmp, name).mkdir()
             found = vscode.installed_extensions(Path(tmp))
         self.assertEqual(found["ms-vscode.cpptools"].version, "1.34.4")
-        self.assertEqual(found["vscjava.vscode-java-pack"].version, "0.31.1")
+        self.assertEqual(found["rust-lang.rust-analyzer"].version, "0.3.3073")
         self.assertEqual(found["golang.go"].version, "0.56.1")
 
     def test_wsl_uses_server_extensions(self):
@@ -72,8 +72,10 @@ class ExtensionCheckTest(unittest.TestCase):
         self.assertIs(results["ext: Go"].status, Status.WARN)
         self.assertIn("--force", results["ext: Go"].fix[0])
         self.assertIs(results["ext: C#"].status, Status.OK)  # stable install isn't compared to pre-release
-        self.assertIs(results["ext: Java"].status, Status.MISSING)
-        self.assertEqual(results["ext: Java"].fix, ["code --install-extension vscjava.vscode-java-pack"])
+        self.assertIs(results["ext: Rust"].status, Status.MISSING)
+        self.assertEqual(results["ext: Rust"].fix, ["code --install-extension rust-lang.rust-analyzer"])
+        # JVM development is pointed at IntelliJ IDEA, never at VS Code extensions
+        self.assertFalse({"ext: Java", "ext: Gradle", "ext: Kotlin"} & results.keys())
         self.assertFalse(results["ext: ESLint (JS/TS)"].required)
         self.assertNotIn("ext: WSL", results)  # only offered on Windows
 

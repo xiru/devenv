@@ -368,6 +368,110 @@ DOCS.update({
     "rust_components": "https://rust-lang.github.io/rustup/concepts/components.html",
 })
 
+# Dart and Flutter, merged into the tables above.
+_FLUTTER_GIT_UNIX = [
+    "git clone https://github.com/flutter/flutter.git -b stable ~/flutter",
+    "echo 'export PATH=\"$PATH:$HOME/flutter/bin\"' >> ~/.bashrc && source ~/.bashrc",
+    "flutter doctor",
+]
+_FLUTTER_DOCTOR = [
+    "flutter doctor -v   (explains how to fix each item)",
+    "flutter doctor --android-licenses   (accept the Android SDK licenses, if you target Android)",
+]
+_DART_FLUTTER_HINTS: dict[str, dict[str, list[str]]] = {
+    "windows": {
+        "dart": ["winget install --id Google.DartSDK -e", "# or install Flutter, which bundles Dart"],
+        "flutter": [
+            "# Flutter is not in winget; the official git checkout (needs Git):",
+            'git clone https://github.com/flutter/flutter.git -b stable "$env:USERPROFILE\\flutter"',
+            '[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:USERPROFILE\\flutter\\bin", "User")',
+            "# open a new terminal, then: flutter doctor",
+        ],
+        "flutter_doctor": _FLUTTER_DOCTOR,
+    },
+    "macos": {
+        "dart": ["brew tap dart-lang/dart && brew install dart", "# or install Flutter, which bundles Dart"],
+        "flutter": ["brew install --cask flutter", "flutter doctor"],
+        "flutter_doctor": _FLUTTER_DOCTOR,
+    },
+    "linux": {
+        "dart": ["Download the Dart SDK from https://dart.dev/get-dart/archive, or install Flutter (it bundles Dart)"],
+        "flutter": ["# prerequisites: git curl unzip xz-utils zip", *_FLUTTER_GIT_UNIX],
+        "flutter_doctor": _FLUTTER_DOCTOR,
+    },
+    "debian": {
+        "dart": [
+            "sudo apt update && sudo apt install -y apt-transport-https wget gpg",
+            "wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/dart.gpg",
+            "echo 'deb [signed-by=/usr/share/keyrings/dart.gpg arch={arch}] "
+            "https://storage.googleapis.com/download.dartlang.org/linux/debian stable main' | sudo tee /etc/apt/sources.list.d/dart_stable.list",
+            "sudo apt update && sudo apt install -y dart",
+            "# or install Flutter, which bundles Dart",
+        ],
+        "flutter": [
+            "sudo apt update && sudo apt install -y curl git unzip xz-utils zip libglu1-mesa",
+            *_FLUTTER_GIT_UNIX,
+            "# or: sudo snap install flutter --classic",
+            "# Linux desktop targets also need: sudo apt install -y clang cmake ninja-build pkg-config libgtk-3-dev",
+        ],
+    },
+    "arch": {
+        "dart": ["sudo pacman -S --needed dart"],
+    },
+    "wsl": {
+        "flutter": [
+            "# Flutter inside WSL builds web, Linux and Android (via adb) apps; for Windows desktop apps",
+            "# or the Android emulator, install Flutter on Windows as well.",
+            "sudo apt update && sudo apt install -y curl git unzip xz-utils zip libglu1-mesa",
+            *_FLUTTER_GIT_UNIX,
+        ],
+    },
+}
+for _family, _extra in _DART_FLUTTER_HINTS.items():
+    HINTS.setdefault(_family, {}).update(_extra)
+
+# IntelliJ IDEA: the recommended IDE for Java and Kotlin (VS Code is not suggested for JVM work).
+_TOOLBOX = "# or JetBrains Toolbox, which installs and updates all JetBrains IDEs: https://www.jetbrains.com/toolbox-app/"
+_INTELLIJ_UPDATE = ["Update from JetBrains Toolbox, or in IntelliJ IDEA: Help > Check for Updates"]
+_INTELLIJ_HINTS: dict[str, dict[str, list[str]]] = {
+    "windows": {
+        "intellij": ["winget install --id JetBrains.IntelliJIDEA -e",
+                     "# or: winget install --id JetBrains.Toolbox -e   (then install IntelliJ IDEA from Toolbox)"],
+        "intellij_update": _INTELLIJ_UPDATE,
+    },
+    "macos": {
+        "intellij": ["brew install --cask intellij-idea", "# or: brew install --cask jetbrains-toolbox"],
+        "intellij_update": ["brew upgrade --cask intellij-idea   (or update from JetBrains Toolbox / Help > Check for Updates)"],
+    },
+    "linux": {
+        "intellij": ["Install JetBrains Toolbox (https://www.jetbrains.com/toolbox-app/) and IntelliJ IDEA from it",
+                     "# or download IntelliJ IDEA from https://www.jetbrains.com/idea/download/"],
+        "intellij_update": _INTELLIJ_UPDATE,
+    },
+    "debian": {
+        "intellij": ["sudo snap install intellij-idea-ultimate --classic", _TOOLBOX],
+        "intellij_update": ["sudo snap refresh intellij-idea-ultimate   (or update from JetBrains Toolbox)"],
+    },
+    "wsl": {
+        "intellij": [
+            "# Install IntelliJ IDEA on Windows and open projects stored in WSL through its WSL support.",
+            "# In PowerShell on Windows:",
+            "winget install --id JetBrains.IntelliJIDEA -e",
+        ],
+        "intellij_update": ["Update IntelliJ IDEA on Windows (JetBrains Toolbox or Help > Check for Updates)"],
+    },
+}
+for _family, _extra in _INTELLIJ_HINTS.items():
+    HINTS.setdefault(_family, {}).update(_extra)
+
+DOCS.update({
+    "dart": "https://dart.dev/get-dart",
+    "flutter": "https://docs.flutter.dev/get-started/install",
+    "flutter_doctor": "https://docs.flutter.dev/get-started/install",
+    "intellij": "https://www.jetbrains.com/idea/download/",
+    "intellij_update": "https://www.jetbrains.com/help/idea/update.html",
+})
+
 PACKAGE_MANAGER_LABEL = {
     "windows": "winget",
     "macos": "Homebrew",

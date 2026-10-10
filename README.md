@@ -2,34 +2,46 @@
 
 Checks whether the current computer has the global tooling needed to develop,
 test and run applications in Bash, Java/Kotlin (with Gradle), Go, Rust,
-JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes — plus Git and Visual
-Studio Code:
+Dart/Flutter, JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes — plus Git
+and Visual Studio Code:
 
 | Environment | Required | Optional (reported as *partial* when missing) |
 |---|---|---|
 | Git | `git` (≥ 2.34) | global `user.name` / `user.email` |
 | Bash scripting | `bash` (≥ 4.0; on Windows Git Bash, falling back to WSL's bash) | `shellcheck`, `shfmt` |
-| Java + Gradle | `java` (≥ 17), `javac` (a JDK, not just a JRE), `gradle` | `JAVA_HOME` set and valid |
-| Kotlin | `kotlinc` (≥ 2.0) and a `java` to run it | — (Gradle is checked under Java + Gradle) |
+| Java + Gradle | `java` (≥ 17), `javac` (a JDK, not just a JRE), `gradle` | `JAVA_HOME` set and valid; IntelliJ IDEA (installed and up to date) |
+| Kotlin | `kotlinc` (≥ 2.0) and a `java` to run it (Gradle is checked under Java + Gradle) | IntelliJ IDEA (installed and up to date) |
 | Go | `go` (≥ 1.22) | Go bin directory (`GOBIN` / `GOPATH/bin`) on `PATH` |
 | Rust | `rustc` (≥ 1.80), `cargo`, a working linker (MSVC Build Tools on Windows, `cc` elsewhere) | `rustup`, `clippy`, `rustfmt` |
+| Dart | `dart` (≥ 3.0; the copy bundled with Flutter counts) | |
+| Flutter | `flutter` (≥ 3.22, read from `flutter --version --machine`) | every `flutter doctor` item (Android toolchain, Chrome, Visual Studio, Xcode, Linux toolchain, connected devices, …) as its own row |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` | global `tsc` |
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` or `ninja` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
 | Docker | `docker` CLI and a reachable engine/daemon | `docker compose` |
 | Kubernetes | `kubectl` | current kube context, `helm`, `kind`/`minikube`/`k3d` |
-| Visual Studio Code | `code`, plus the main extension per language (see below), installed and up to date | Bash, Kotlin, ESLint, CMake Tools, WSL (Windows) |
+| Visual Studio Code | `code`, plus the main extension per language (see below), installed and up to date | Bash, ESLint, CMake Tools, WSL (Windows) |
+
+### IntelliJ IDEA for Java and Kotlin
+
+Java, Gradle and Kotlin development is pointed at **IntelliJ IDEA**, never at VS Code: the
+VS Code check has no Java/Gradle/Kotlin extensions, and the Java + Gradle and Kotlin environments
+include an *IntelliJ IDEA (IDE)* row instead. Installations are found through their
+`product-info.json` (standalone installers, JetBrains Toolbox, Homebrew, snap, `/opt`; from WSL also
+the Windows install), so the IDE is never launched. The version is compared with the latest
+release from JetBrains' public releases API (skipped with `--offline`). A missing or outdated IDE
+is a recommendation (*partial*), not a failure, and comes with install/update instructions
+(winget / Homebrew / snap / JetBrains Toolbox).
 
 ### VS Code extensions
 
-| Language | Extension (alternatives accepted) |
+| Language | Extension (alternatives accepted) — Java/Kotlin use IntelliJ IDEA instead |
 |---|---|
 | Bash | `mads-hartmann.bash-ide-vscode` (or `timonwong.shellcheck`) optional |
-| Java | `vscjava.vscode-java-pack` (or `redhat.java`) |
-| Gradle | `vscjava.vscode-gradle` |
-| Kotlin | `fwcd.kotlin` optional (community extension; JetBrains' own Kotlin IDE is IntelliJ IDEA) |
 | Go | `golang.go` |
 | Rust | `rust-lang.rust-analyzer` |
+| Dart | `dart-code.dart-code` |
+| Flutter | `dart-code.flutter` |
 | JavaScript / TypeScript | built into VS Code; `dbaeumer.vscode-eslint` optional |
 | C / C++ | `ms-vscode.cpptools-extension-pack` (or `ms-vscode.cpptools`); `ms-vscode.cmake-tools` optional |
 | C# | `ms-dotnettools.csdevkit` (or `ms-dotnettools.csharp`) |
@@ -77,9 +89,9 @@ Options:
 
 ```
 --deep             also build and run a hello world program in every environment
---only java,go     check a subset: git, bash, java, kotlin, go, rust, node, cpp, dotnet,
-                   docker, kubernetes, vscode
---offline          skip VS Code / extension update checks (no network access)
+--only java,go     check a subset: git, bash, java, kotlin, go, rust, dart, flutter, node,
+                   cpp, dotnet, docker, kubernetes, vscode
+--offline          skip VS Code / extension / IntelliJ IDEA update checks (no network access)
 --json             machine readable output (includes the fix commands)
 -v, --verbose      show where each tool was found
 --no-hints         skip installation suggestions
@@ -107,6 +119,8 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Bash scripting | a `set -euo pipefail` script using a function and an array, linted with `shellcheck` first when installed |
 | Kotlin | `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
 | Rust | `cargo build --offline` of a minimal crate, then the binary is run (proves the linker works too) |
+| Dart | `dart compile exe` (native AOT executable), then the executable is run |
+| Flutter | `flutter create` of the template app, then `flutter test` runs its widget test headless — no device or emulator needed. The first run downloads the template's packages into the pub cache |
 | Java + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |
 | JavaScript / TypeScript | `node hello.js`; `hello.ts` compiled with a global `tsc`, or run with Node's built-in type stripping (Node ≥ 22.6) |
@@ -129,7 +143,8 @@ tests need internet access the first time to pull `hello-world` / `busybox`.
   `PATH` (it normally only is inside a "Developer PowerShell for VS").
 - Minimum versions live in `MIN_VERSIONS` in `devenv_check/checks.py`; install
   commands live in `devenv_check/install_hints.py` (lookup order: WSL → distro family →
-  generic Linux); hello world tests live in `devenv_check/smoke.py`.
+  generic Linux); hello world tests live in `devenv_check/smoke.py`; VS Code and IntelliJ IDEA checks
+  live in `devenv_check/vscode.py` and `devenv_check/jetbrains.py`.
 
 ## Tests
 

@@ -26,6 +26,8 @@ MIN_VERSIONS: dict[str, tuple[int, ...]] = {
     "java": (17,),
     "kotlin": (2, 0),
     "rust": (1, 80),
+    "dart": (3, 0),
+    "flutter": (3, 22),
     "go": (1, 22),
     "node": (22,),
     "dotnet": (8,),
@@ -278,7 +280,13 @@ def check_java(p: PlatformInfo) -> list[ToolResult]:
     # `gradle --version` starts a JVM and may print a first-run banner: allow it time.
     gradle = probe("gradle", ["gradle", "--version"], pattern=r"Gradle (\d+)\.(\d+)(?:\.(\d+))?", hint="gradle", timeout=120)
     detected_home = detect_java_home(java.path) if java.path and java.status is not Status.MISSING else None
-    return [java, javac, check_java_home(detected_home), gradle]
+    return [java, javac, check_java_home(detected_home), gradle, check_intellij(p)]
+
+
+def check_intellij(p: PlatformInfo) -> ToolResult:
+    from .jetbrains import check_intellij as check  # imported lazily: jetbrains builds on this module
+
+    return check(p)
 
 
 # --------------------------------------------------------------------------- Kotlin
@@ -290,7 +298,7 @@ def check_kotlin(p: PlatformInfo) -> list[ToolResult]:
                     min_version=MIN_VERSIONS["kotlin"], hint="kotlin", timeout=120)
     java = probe("java (JVM for Kotlin)", ["java", "-version"],
                  pattern=r'version "(\d+)(?:\.(\d+))?(?:\.(\d+))?', fix=_java_legacy, hint="java")
-    return [kotlinc, java]
+    return [kotlinc, java, check_intellij(p)]
 
 
 # --------------------------------------------------------------------------- Rust
@@ -329,6 +337,75 @@ def check_rust(p: PlatformInfo) -> list[ToolResult]:
         tools.append(probe("clippy (linter)", ["cargo", "clippy", "--version"], required=False, hint="rust_components"))
         tools.append(probe("rustfmt (formatter)", ["cargo", "fmt", "--version"], required=False, hint="rust_components"))
     return tools
+
+
+# --------------------------------------------------------------------------- Dart + Flutter
+
+
+def check_dart(p: PlatformInfo) -> list[ToolResult]:
+    dart = probe("dart", ["dart", "--version"], pattern=r"Dart SDK version: (\d+)\.(\d+)\.(\d+)",
+                 min_version=MIN_VERSIONS["dart"], hint="dart", timeout=60)
+    if dart.path and dart.status is Status.OK and "flutter" in dart.path.lower():
+        dart.detail = "bundled with Flutter"
+    return [dart]
+
+
+def flutter_version(output: str) -> dict:
+    """Parse `flutter --version --machine`; first runs may print banners before the JSON."""
+    start, end = output.find("{"), output.rfind("}")
+    if start < 0 or end < start:
+        return {}
+    try:
+        return json.loads(output[start:end + 1])
+    except json.JSONDecodeError:
+        return {}
+
+
+# `flutter doctor` marks each validator with ✓/√ (ok), ! (partial) or ✗/X (missing).
+_DOCTOR_LINE = re.compile(r"^\[(?P<mark>[^\]]{1,2})\]\s+(?P<name>[^(\n]+?)\s*(?:\((?P<info>.*)\))?\s*$")
+_DOCTOR_STATUS = {"✓": Status.OK, "√": Status.OK, "!": Status.WARN, "✗": Status.MISSING, "X": Status.MISSING,
+                  "x": Status.MISSING, "☠": Status.MISSING}
+
+
+def parse_flutter_doctor(output: str) -> list[ToolResult]:
+    results = []
+    for line in output.splitlines():
+        match = _DOCTOR_LINE.match(line.strip())
+        if not match:
+            continue
+        name = match["name"].strip()
+        if name.lower().startswith("flutter"):  # the SDK itself is reported by the main row
+            continue
+        name = re.split(r"\s+-\s+", name)[0]  # "Android toolchain - develop for Android devices"
+        status = _DOCTOR_STATUS.get(match["mark"].strip(), Status.WARN)
+        results.append(ToolResult(f"doctor: {name}", status, detail=(match["info"] or "").strip(),
+                                  required=False, hint=None if status is Status.OK else "flutter_doctor"))
+    return results
+
+
+def check_flutter(p: PlatformInfo) -> list[ToolResult]:
+    name = "flutter"
+    path = which("flutter")
+    if path is None:
+        return [ToolResult(name, Status.MISSING, detail="'flutter' not found in PATH", hint="flutter")]
+    # A fresh Flutter checkout downloads its Dart SDK on first run, so allow plenty of time.
+    res = run([path, "--version", "--machine"], timeout=600)
+    info = flutter_version(res.stdout)
+    version = parse_version(info.get("frameworkVersion", ""), r"(\d+)\.(\d+)\.(\d+)")
+    if not version:
+        return [ToolResult(name, Status.MISSING, path=path, hint="flutter",
+                           detail=f"found but not working: {first_line(res.output) or 'no output'}")]
+    flutter = ToolResult(name, Status.OK, version=format_version(version), path=path, hint="flutter",
+                         detail=f"channel {info.get('channel', '?')}, Dart {info.get('dartSdkVersion', '?')}")
+    if version < MIN_VERSIONS["flutter"]:
+        flutter.status = Status.WARN
+        flutter.detail += f"; older than recommended {format_version(MIN_VERSIONS['flutter'])}"
+    doctor = run([path, "doctor"], timeout=300)
+    validators = parse_flutter_doctor(doctor.output)
+    if not validators:
+        validators = [ToolResult("doctor", Status.WARN, required=False, hint="flutter_doctor",
+                                 detail=f"could not read 'flutter doctor' output: {first_line(doctor.output)}")]
+    return [flutter, *validators]
 
 
 # --------------------------------------------------------------------------- Go
@@ -521,6 +598,8 @@ ENVIRONMENTS: dict[str, tuple[str, Callable[[PlatformInfo], list[ToolResult]]]] 
     "kotlin": ("Kotlin", check_kotlin),
     "go": ("Go", check_go),
     "rust": ("Rust", check_rust),
+    "dart": ("Dart", check_dart),
+    "flutter": ("Flutter", check_flutter),
     "node": ("JavaScript / TypeScript (Node.js)", check_node),
     "cpp": ("C / C++", check_cpp),
     "dotnet": ("C# (.NET)", check_dotnet),

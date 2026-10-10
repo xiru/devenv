@@ -204,6 +204,36 @@ def smoke_rust(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Too
     )]
 
 
+# --------------------------------------------------------------------------- Dart + Flutter
+
+
+def smoke_dart(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    dart = _find(tools, "dart")
+    if not _usable(dart):
+        return [_skipped("hello: Dart", "dart not available")]
+    _write(work / "hello.dart", "void main() {\n  final who = 'Dart';\n  print('hello from $who');\n}\n")
+    binary = work / f"hello{EXE}"
+    return [build_and_run(
+        "hello: Dart",
+        [([dart.path, "compile", "exe", "hello.dart", "-o", binary.name], 300), ([str(binary)], 30)],
+        "hello from Dart", work, detail="dart compile exe (native AOT) + run",
+    )]
+
+
+def smoke_flutter(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    flutter = _find(tools, "flutter")
+    if not _usable(flutter):
+        return [_skipped("hello: Flutter app test", "flutter not available")]
+    # The template app ships a widget test (counter increments), which runs headless: no device needed.
+    # `flutter test` resolves packages from the pub cache, downloading them on a first run.
+    return [build_and_run(
+        "hello: Flutter app test",
+        [([flutter.path, "create", "--no-pub", "--project-name", "hello_devenv", "."], 600),
+         ([flutter.path, "test", "--reporter=compact"], 900)],
+        "All tests passed!", work, detail="flutter create + flutter test (template widget test)",
+    )]
+
+
 # --------------------------------------------------------------------------- Go
 
 
@@ -374,6 +404,8 @@ SMOKE_TESTS: dict[str, Callable[[PlatformInfo, list[ToolResult], Path], list[Too
     "kotlin": smoke_kotlin,
     "go": smoke_go,
     "rust": smoke_rust,
+    "dart": smoke_dart,
+    "flutter": smoke_flutter,
     "node": smoke_node,
     "cpp": smoke_cpp,
     "dotnet": smoke_dotnet,
