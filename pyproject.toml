@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devenv-check"
+version = "0.1.0"
+description = "Check a computer for Java/Gradle, Go, Node/TypeScript, C/C++, C#, Docker and Kubernetes development tooling"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+devenv-check = "devenv_check.cli:main"
+
+[tool.setuptools]
+packages = ["devenv_check"]
