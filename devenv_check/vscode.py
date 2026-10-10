@@ -35,9 +35,14 @@ class ExtensionSpec:
 
 
 EXTENSIONS: list[ExtensionSpec] = [
+    ExtensionSpec("Bash", ("mads-hartmann.bash-ide-vscode", "timonwong.shellcheck"), required=False,
+                  note="language server + ShellCheck integration"),
     ExtensionSpec("Java", ("vscjava.vscode-java-pack", "redhat.java")),
     ExtensionSpec("Gradle", ("vscjava.vscode-gradle",)),
+    ExtensionSpec("Kotlin", ("fwcd.kotlin",), required=False,
+                  note="community extension; IntelliJ IDEA is JetBrains' Kotlin IDE"),
     ExtensionSpec("Go", ("golang.go",)),
+    ExtensionSpec("Rust", ("rust-lang.rust-analyzer",)),
     ExtensionSpec("ESLint (JS/TS)", ("dbaeumer.vscode-eslint",), required=False,
                   note="JavaScript/TypeScript language support is built into VS Code"),
     ExtensionSpec("C/C++", ("ms-vscode.cpptools-extension-pack", "ms-vscode.cpptools")),

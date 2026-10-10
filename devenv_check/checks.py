@@ -22,7 +22,10 @@ from .runner import GENERIC_VERSION, first_line, format_version, parse_version, 
 # Minimum recommended versions; anything older is reported as a warning.
 MIN_VERSIONS: dict[str, tuple[int, ...]] = {
     "git": (2, 34),
+    "bash": (4, 0),
     "java": (17,),
+    "kotlin": (2, 0),
+    "rust": (1, 80),
     "go": (1, 22),
     "node": (22,),
     "dotnet": (8,),
@@ -178,6 +181,46 @@ def check_git(p: PlatformInfo) -> list[ToolResult]:
     return [git]
 
 
+# --------------------------------------------------------------------------- Bash scripting
+
+BASH_VERSION = r"version (\d+)\.(\d+)(?:\.(\d+))?"
+
+
+def find_git_bash() -> str | None:
+    """Git for Windows ships bash next to git: <Git>\\cmd\\git.exe -> <Git>\\bin\\bash.exe."""
+    candidates = []
+    git = which("git")
+    if git:
+        candidates.append(Path(git).resolve().parent.parent / "bin" / "bash.exe")
+    candidates.append(Path(os.environ.get("ProgramFiles", r"C:\Program Files"), "Git", "bin", "bash.exe"))
+    return next((str(c) for c in candidates if c.is_file()), None)
+
+
+def check_bash(p: PlatformInfo) -> list[ToolResult]:
+    if p.system == "windows":
+        # PATH usually resolves `bash` to System32\bash.exe, the WSL launcher; prefer Git Bash.
+        candidates = []
+        git_bash = find_git_bash()
+        if git_bash:
+            candidates.append(_candidate("Git Bash", [git_bash, "--version"], BASH_VERSION))
+        path_bash = which("bash")
+        if path_bash:
+            label = "WSL bash" if "system32" in path_bash.lower() else "bash"
+            candidates.append(_candidate(label, ["bash", "--version"], BASH_VERSION))
+        bash = first_available("bash", candidates, hint="bash", missing_detail="neither Git Bash nor WSL bash found")
+        if bash.version and (parse_version(bash.version) or ()) < MIN_VERSIONS["bash"]:
+            bash.status, bash.detail = Status.WARN, f"{bash.detail}; older than recommended 4.0"
+    else:
+        bash = probe("bash", ["bash", "--version"], pattern=BASH_VERSION, min_version=MIN_VERSIONS["bash"], hint="bash")
+        if bash.status is Status.WARN and p.system == "macos":
+            bash.detail = "macOS ships bash 3.2; install a current bash"
+    return [
+        bash,
+        probe("shellcheck (linter)", ["shellcheck", "--version"], required=False, hint="shell_tools"),
+        probe("shfmt (formatter)", ["shfmt", "--version"], required=False, hint="shell_tools"),
+    ]
+
+
 # --------------------------------------------------------------------------- Java
 
 
@@ -236,6 +279,56 @@ def check_java(p: PlatformInfo) -> list[ToolResult]:
     gradle = probe("gradle", ["gradle", "--version"], pattern=r"Gradle (\d+)\.(\d+)(?:\.(\d+))?", hint="gradle", timeout=120)
     detected_home = detect_java_home(java.path) if java.path and java.status is not Status.MISSING else None
     return [java, javac, check_java_home(detected_home), gradle]
+
+
+# --------------------------------------------------------------------------- Kotlin
+
+
+def check_kotlin(p: PlatformInfo) -> list[ToolResult]:
+    # kotlinc starts a JVM, so `-version` takes a few seconds.
+    kotlinc = probe("kotlinc", ["kotlinc", "-version"], pattern=r"kotlinc-jvm (\d+)\.(\d+)\.(\d+)",
+                    min_version=MIN_VERSIONS["kotlin"], hint="kotlin", timeout=120)
+    java = probe("java (JVM for Kotlin)", ["java", "-version"],
+                 pattern=r'version "(\d+)(?:\.(\d+))?(?:\.(\d+))?', fix=_java_legacy, hint="java")
+    return [kotlinc, java]
+
+
+# --------------------------------------------------------------------------- Rust
+
+
+def check_rust_linker(p: PlatformInfo, rustc: str) -> ToolResult:
+    """rustc links through the platform's C toolchain; without it every build fails."""
+    name = "linker"
+    host = re.search(r"^host:\s*(\S+)", run([rustc, "-vV"]).stdout, re.MULTILINE)
+    host = host.group(1) if host else ""
+    if p.system == "windows" and host.endswith("msvc"):
+        msvc = probe_msvc()
+        if msvc.status is Status.OK:
+            return ToolResult(name, Status.OK, version=msvc.version, detail=f"MSVC link.exe ({host})")
+        return ToolResult(name, Status.MISSING, hint="cpp",
+                          detail=f"{host} needs the Visual Studio C++ Build Tools (link.exe)")
+    if p.system == "macos" and not run(["xcode-select", "-p"]).ok:
+        return ToolResult(name, Status.MISSING, hint="cpp", detail="Xcode Command Line Tools not installed")
+    linker = which("gcc" if p.system == "windows" else "cc")
+    if linker:
+        return ToolResult(name, Status.OK, path=linker, detail=f"{Path(linker).name} ({host or 'unknown host'})")
+    return ToolResult(name, Status.MISSING, hint="cpp", detail="no C linker (cc) found; Rust needs one to link programs")
+
+
+def check_rust(p: PlatformInfo) -> list[ToolResult]:
+    rustc = probe("rustc", ["rustc", "--version"], pattern=r"rustc (\d+)\.(\d+)\.(\d+)",
+                  min_version=MIN_VERSIONS["rust"], hint="rust")
+    cargo = probe("cargo", ["cargo", "--version"], pattern=r"cargo (\d+)\.(\d+)\.(\d+)", hint="rust")
+    rustup = probe("rustup", ["rustup", "--version"], pattern=r"rustup (\d+)\.(\d+)\.(\d+)", required=False, hint="rustup")
+    if rustup.status is Status.MISSING and rustc.status is not Status.MISSING:
+        rustup.detail = "Rust is installed without rustup (distro package?); rustup keeps toolchains current"
+    tools = [rustc, cargo, rustup]
+    if rustc.path and rustc.status is not Status.MISSING:
+        tools.append(check_rust_linker(p, rustc.path))
+    if cargo.path and cargo.status is not Status.MISSING:
+        tools.append(probe("clippy (linter)", ["cargo", "clippy", "--version"], required=False, hint="rust_components"))
+        tools.append(probe("rustfmt (formatter)", ["cargo", "fmt", "--version"], required=False, hint="rust_components"))
+    return tools
 
 
 # --------------------------------------------------------------------------- Go
@@ -423,8 +516,11 @@ def check_vscode(p: PlatformInfo) -> list[ToolResult]:
 
 ENVIRONMENTS: dict[str, tuple[str, Callable[[PlatformInfo], list[ToolResult]]]] = {
     "git": ("Git", check_git),
+    "bash": ("Bash scripting", check_bash),
     "java": ("Java + Gradle", check_java),
+    "kotlin": ("Kotlin", check_kotlin),
     "go": ("Go", check_go),
+    "rust": ("Rust", check_rust),
     "node": ("JavaScript / TypeScript (Node.js)", check_node),
     "cpp": ("C / C++", check_cpp),
     "dotnet": ("C# (.NET)", check_dotnet),

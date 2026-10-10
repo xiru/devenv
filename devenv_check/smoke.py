@@ -82,7 +82,8 @@ def build_and_run(
 
 def _write(path: Path, text: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    # newline="\n": keep LF on Windows too (bash rejects CRLF); .bat content carries its own \r\n.
+    path.write_text(text, encoding="utf-8", newline="\n")
     return path
 
 
@@ -103,6 +104,35 @@ def smoke_git(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Tool
          (isolated + ["commit", "-q", "-m", "hello from git"], 30), (isolated + ["log", "-1", "--format=%s"], 30)],
         "hello from git", work, detail="init, add, commit and log in a temporary repository",
     )]
+
+
+# --------------------------------------------------------------------------- Bash scripting
+
+BASH_SCRIPT = """#!/usr/bin/env bash
+set -euo pipefail
+
+greet() {
+    local -a words=("hello" "from" "$1")
+    echo "${words[*]}"
+}
+
+greet bash
+"""
+
+
+def smoke_bash(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    bash, shellcheck = _find(tools, "bash"), _find(tools, "shellcheck (linter)")
+    if not _usable(bash):
+        return [_skipped("hello: Bash script", "bash not available")]
+    _write(work / "hello.sh", BASH_SCRIPT)
+    steps: list[Step] = []
+    detail = f"ran with {bash.provider or 'bash'}"
+    if _usable(shellcheck):
+        steps.append(([shellcheck.path, "hello.sh"], 60))
+        detail = "passed shellcheck, " + detail
+    # A relative path works for Git Bash and for WSL's bash.exe (which maps the Windows cwd to /mnt/...).
+    steps.append(([bash.path, "hello.sh"], 60))
+    return [build_and_run("hello: Bash script", steps, "hello from bash", work, detail=detail)]
 
 
 # --------------------------------------------------------------------------- Java + Gradle
@@ -139,6 +169,39 @@ def smoke_java(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Too
     else:
         results.append(_skipped("hello: Gradle project", "gradle or java not available"))
     return results
+
+
+# --------------------------------------------------------------------------- Kotlin
+
+
+def smoke_kotlin(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    kotlinc, java = _find(tools, "kotlinc"), _find(tools, "java (JVM for Kotlin)")
+    if not (_usable(kotlinc) and _usable(java)):
+        return [_skipped("hello: Kotlin", "kotlinc or java not available")]
+    _write(work / "hello.kt", 'fun main() {\n    val who = "Kotlin"\n    println("hello from $who")\n}\n')
+    return [build_and_run(
+        "hello: Kotlin",
+        [([kotlinc.path, "hello.kt", "-include-runtime", "-d", "hello.jar"], 600),
+         ([java.path, "-jar", "hello.jar"], 60)],
+        "hello from Kotlin", work, detail="kotlinc to a runnable jar, ran with java -jar",
+    )]
+
+
+# --------------------------------------------------------------------------- Rust
+
+
+def smoke_rust(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    cargo = _find(tools, "cargo")
+    if not _usable(cargo):
+        return [_skipped("hello: Rust (cargo)", "cargo not available")]
+    _write(work / "Cargo.toml", '[package]\nname = "hello"\nversion = "0.1.0"\nedition = "2021"\n\n[dependencies]\n')
+    _write(work / "src" / "main.rs", 'fn main() {\n    let who = "Rust";\n    println!("hello from {who}");\n}\n')
+    binary = work / "target" / "debug" / f"hello{EXE}"
+    return [build_and_run(
+        "hello: Rust (cargo)",
+        [([cargo.path, "build", "--offline", "--quiet"], 600), ([str(binary)], 30)],
+        "hello from Rust", work, env={"CARGO_TERM_COLOR": "never"}, detail="cargo build + run",
+    )]
 
 
 # --------------------------------------------------------------------------- Go
@@ -306,8 +369,11 @@ def smoke_kubernetes(p: PlatformInfo, tools: list[ToolResult], work: Path) -> li
 
 SMOKE_TESTS: dict[str, Callable[[PlatformInfo, list[ToolResult], Path], list[ToolResult]]] = {
     "git": smoke_git,
+    "bash": smoke_bash,
     "java": smoke_java,
+    "kotlin": smoke_kotlin,
     "go": smoke_go,
+    "rust": smoke_rust,
     "node": smoke_node,
     "cpp": smoke_cpp,
     "dotnet": smoke_dotnet,

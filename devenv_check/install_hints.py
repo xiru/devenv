@@ -299,6 +299,75 @@ DOCS.update({
     "vscode_update": "https://code.visualstudio.com/updates",
 })
 
+# Bash scripting, Kotlin and Rust, merged into the tables above.
+_SDKMAN_KOTLIN = ['curl -s "https://get.sdkman.io" | bash', 'source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk install kotlin']
+_RUSTUP_UNIX = ["curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y", '. "$HOME/.cargo/env"']
+_RUST_COMPONENTS = ["rustup component add clippy rustfmt"]
+_LANG_HINTS: dict[str, dict[str, list[str]]] = {
+    "windows": {
+        "bash": ["winget install --id Git.Git -e   (includes Git Bash)", "# or Linux bash through WSL: wsl --install -d Ubuntu"],
+        "shell_tools": ["winget install --id koalaman.shellcheck -e", "winget install --id mvdan.shfmt -e"],
+        "kotlin": ["scoop install kotlin   (or: choco install kotlinc)", "# kotlinc needs a JDK (see Java + Gradle)"],
+        "rust": [
+            "winget install --id Rustlang.Rustup -e",
+            "rustup default stable",
+            "# the default MSVC toolchain links with the Visual Studio C++ Build Tools (see C / C++)",
+        ],
+        "rustup": ["winget install --id Rustlang.Rustup -e"],
+        "rust_components": _RUST_COMPONENTS,
+    },
+    "macos": {
+        "bash": ["brew install bash   (macOS ships bash 3.2; Homebrew installs bash 5)"],
+        "shell_tools": ["brew install shellcheck shfmt"],
+        "kotlin": ["brew install kotlin"],
+        "rust": ["xcode-select --install   (provides the linker)", *_RUSTUP_UNIX],
+        "rustup": ["brew install rustup && rustup-init -y"],
+        "rust_components": _RUST_COMPONENTS,
+    },
+    "linux": {
+        "bash": ["Install bash with your distribution's package manager"],
+        "shell_tools": ["Install shellcheck and shfmt with your package manager (shfmt: go install mvdan.cc/sh/v3/cmd/shfmt@latest)"],
+        "kotlin": ["# needs zip/unzip/curl; kotlinc also needs a JDK (see Java + Gradle)", *_SDKMAN_KOTLIN],
+        "rust": ["# a C linker is required too: install gcc (see C / C++)", *_RUSTUP_UNIX],
+        "rustup": ["# distro Rust packages lag behind; rustup installs and updates official toolchains", *_RUSTUP_UNIX],
+        "rust_components": _RUST_COMPONENTS,
+    },
+    "debian": {
+        "bash": ["sudo apt update && sudo apt install -y bash"],
+        "shell_tools": ["sudo apt install -y shellcheck shfmt"],
+        "kotlin": ["sudo apt install -y curl zip unzip", *_SDKMAN_KOTLIN, "# or: sudo snap install kotlin --classic"],
+        "rust": ["sudo apt update && sudo apt install -y build-essential curl", *_RUSTUP_UNIX],
+    },
+    "fedora": {
+        "bash": ["sudo dnf install -y bash"],
+        "shell_tools": ["sudo dnf install -y ShellCheck shfmt"],
+        "rust": ["sudo dnf install -y gcc curl", *_RUSTUP_UNIX],
+    },
+    "arch": {
+        "bash": ["sudo pacman -S --needed bash"],
+        "shell_tools": ["sudo pacman -S --needed shellcheck shfmt"],
+        "kotlin": ["sudo pacman -S --needed kotlin"],
+        "rust": ["sudo pacman -S --needed rustup base-devel && rustup default stable"],
+        "rustup": ["sudo pacman -S --needed rustup && rustup default stable"],
+    },
+    "suse": {
+        "bash": ["sudo zypper install -y bash"],
+        "shell_tools": ["sudo zypper install -y ShellCheck shfmt"],
+        "rust": ["sudo zypper install -y gcc curl", *_RUSTUP_UNIX],
+    },
+}
+for _family, _extra in _LANG_HINTS.items():
+    HINTS.setdefault(_family, {}).update(_extra)
+
+DOCS.update({
+    "bash": "https://www.gnu.org/software/bash/",
+    "shell_tools": "https://www.shellcheck.net/",
+    "kotlin": "https://kotlinlang.org/docs/command-line.html",
+    "rust": "https://www.rust-lang.org/tools/install",
+    "rustup": "https://rust-lang.github.io/rustup/installation/index.html",
+    "rust_components": "https://rust-lang.github.io/rustup/concepts/components.html",
+})
+
 PACKAGE_MANAGER_LABEL = {
     "windows": "winget",
     "macos": "Homebrew",
