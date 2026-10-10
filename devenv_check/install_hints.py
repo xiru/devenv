@@ -464,8 +464,7 @@ _INTELLIJ_HINTS: dict[str, dict[str, list[str]]] = {
 for _family, _extra in _INTELLIJ_HINTS.items():
     HINTS.setdefault(_family, {}).update(_extra)
 
-# Python 3: interpreter, pip, venv (standard library) and the optional virtualenv package.
-_PIP_USER_VIRTUALENV = ["python3 -m pip install --user virtualenv   (or: pipx install virtualenv)"]
+# Python 3: interpreter, pip and venv (standard library).
 _PYTHON_HINTS: dict[str, dict[str, list[str]]] = {
     "windows": {
         "python": [
@@ -476,41 +475,34 @@ _PYTHON_HINTS: dict[str, dict[str, list[str]]] = {
         ],
         "pip": ["python -m ensurepip --upgrade"],
         "venv": ["venv is part of the standard library: repair or reinstall Python (see above)"],
-        "virtualenv": ["python -m pip install --user virtualenv   (or: pipx install virtualenv)"],
     },
     "macos": {
         "python": ["brew install python"],
         "pip": ["python3 -m ensurepip --upgrade   (Homebrew's python already includes pip)"],
         "venv": ["brew reinstall python"],
-        "virtualenv": ["brew install virtualenv"],
     },
     "linux": {
         "python": ["Install python3 (with pip and venv) with your distribution's package manager"],
         "pip": ["python3 -m ensurepip --upgrade"],
         "venv": ["Install your distribution's python3 venv package (it provides ensurepip)"],
-        "virtualenv": _PIP_USER_VIRTUALENV,
     },
     "debian": {
         "python": ["sudo apt update && sudo apt install -y python3 python3-pip python3-venv"],
         "pip": ["sudo apt install -y python3-pip",
                 "# Ubuntu's system Python is externally managed (PEP 668): pip install inside a venv"],
         "venv": ["sudo apt install -y python3-venv   (Ubuntu ships venv without ensurepip)"],
-        "virtualenv": ["sudo apt install -y python3-virtualenv"],
     },
     "fedora": {
         "python": ["sudo dnf install -y python3 python3-pip"],
         "pip": ["sudo dnf install -y python3-pip"],
-        "virtualenv": ["sudo dnf install -y python3-virtualenv"],
     },
     "arch": {
         "python": ["sudo pacman -S --needed python python-pip"],
         "pip": ["sudo pacman -S --needed python-pip"],
-        "virtualenv": ["sudo pacman -S --needed python-virtualenv"],
     },
     "suse": {
         "python": ["sudo zypper install -y python3 python3-pip"],
         "pip": ["sudo zypper install -y python3-pip"],
-        "virtualenv": ["sudo zypper install -y python3-virtualenv"],
     },
 }
 for _family, _extra in _PYTHON_HINTS.items():
@@ -631,7 +623,6 @@ DOCS.update({
     "python": "https://www.python.org/downloads/",
     "pip": "https://pip.pypa.io/en/stable/installation/",
     "venv": "https://docs.python.org/3/library/venv.html",
-    "virtualenv": "https://virtualenv.pypa.io/en/latest/installation.html",
     "php": "https://www.php.net/manual/en/install.php",
     "composer": "https://getcomposer.org/download/",
     "ruby": "https://www.ruby-lang.org/en/documentation/installation/",

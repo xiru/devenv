@@ -52,7 +52,7 @@ class CheckPythonTest(unittest.TestCase):
             for key, result in responses.items():
                 if key in line:
                     return result
-            return CommandResult(False, "", "No module named virtualenv", 1)
+            return CommandResult(False, "", "unexpected command", 1)
 
         def fake_which(name):  # like shutil.which: absolute paths resolve to themselves
             return "/usr/bin/python3" if name in ("python3", "/usr/bin/python3") else None
@@ -71,7 +71,6 @@ class CheckPythonTest(unittest.TestCase):
         self.assertIs(venv.status, Status.MISSING)
         self.assertIn("apt install python3.12-venv", venv.detail)
         self.assertEqual(venv.hint, "venv")
-        self.assertFalse(tools["virtualenv"].required)
         self.assertIs(checks.EnvResult("python", "Python 3", list(tools.values())).status, Status.MISSING)
 
     def test_missing_pip(self):
@@ -80,13 +79,11 @@ class CheckPythonTest(unittest.TestCase):
         self.assertIs(tools["pip"].status, Status.MISSING)
         self.assertEqual(tools["pip"].hint, "pip")
 
-    def test_all_good_with_virtualenv(self):
+    def test_all_good(self):
         tools = self.run_check({"-m pip": CommandResult(True, "pip 25.2 from x (python 3.14)", "", 0),
-                                "-m venv": CommandResult(True, "", "", 0),
-                                "-m virtualenv": CommandResult(True, "virtualenv 20.29.1 from /x/virtualenv/__init__.py", "", 0)},
+                                "-m venv": CommandResult(True, "", "", 0)},
                                version="3.14.0")
         self.assertTrue(all(t.status is Status.OK for t in tools.values()))
-        self.assertEqual(tools["virtualenv"].version, "20.29.1")
 
     def test_old_python_warns(self):
         tools = self.run_check({"-m pip": CommandResult(True, "pip 21.0", "", 0), "-m venv": CommandResult(True, "", "", 0)},

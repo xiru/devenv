@@ -11,8 +11,8 @@ from .checks import ENVIRONMENTS, SETTINGS, Status, run_checks
 from .platform_info import detect
 from .report import make_style, render_json, render_text
 
-# Environments checked by --favorites; DEVENV_CHECK_FAVORITES="python,go,java" overrides them.
-DEFAULT_FAVORITES = ["python", "go", "java"]
+# Environments checked by --favorites; DEVENV_CHECK_FAVORITES="python,go,java,node" overrides them.
+DEFAULT_FAVORITES = ["python", "go", "java", "node"]
 
 
 def _environment_list(value: str, parser: argparse.ArgumentParser, source: str) -> list[str]:

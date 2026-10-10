@@ -486,16 +486,7 @@ def check_python(p: PlatformInfo) -> list[ToolResult]:
     else:
         pip = ToolResult("pip", Status.MISSING, hint="pip", detail=f"'{launcher} -m pip' failed: {_python_error(pip_res)}")
 
-    virtualenv = probe("virtualenv", [exe, "-m", "virtualenv", "--version"],
-                       pattern=r"virtualenv (\d+)\.(\d+)(?:\.(\d+))?", required=False, hint="virtualenv")
-    if virtualenv.status is Status.MISSING:
-        standalone = probe("virtualenv", ["virtualenv", "--version"], pattern=r"virtualenv (\d+)\.(\d+)(?:\.(\d+))?",
-                           required=False, hint="virtualenv")
-        virtualenv = standalone if standalone.status is not Status.MISSING else ToolResult(
-            "virtualenv", Status.MISSING, required=False, hint="virtualenv",
-            detail="not installed (the built-in venv covers most needs)")
-    virtualenv.path = None if virtualenv.path == exe else virtualenv.path
-    return [python, pip, check_venv(exe), virtualenv]
+    return [python, pip, check_venv(exe)]
 
 
 # --------------------------------------------------------------------------- PHP

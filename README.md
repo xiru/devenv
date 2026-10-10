@@ -1,5 +1,7 @@
 # devenv-check
 
+An opinionated development environment checker.
+
 Checks whether the current computer has the global tooling needed to develop,
 test and run applications in Bash, Java/Kotlin (with Gradle), Go, Rust,
 Dart/Flutter, Python 3, PHP, Ruby, Perl, JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes —
@@ -15,7 +17,7 @@ plus Git and Visual Studio Code:
 | Rust | `rustc` (≥ 1.80), `cargo`, a working linker (MSVC Build Tools on Windows, `cc` elsewhere) | `rustup`, `clippy`, `rustfmt` |
 | Dart | `dart` (≥ 3.0; the copy bundled with Flutter counts) | |
 | Flutter | `flutter` (≥ 3.22, read from `flutter --version --machine`) | every `flutter doctor` item (Android toolchain, Chrome, Visual Studio, Xcode, Linux toolchain, connected devices, …) as its own row |
-| Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | `virtualenv` |
+| Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | |
 | PHP + Composer | `php` (≥ 8.2), `composer` | |
 | Ruby + Bundler | `ruby` (≥ 3.2; macOS's deprecated system Ruby is flagged), `gem`, `bundle` | `ridk` (RubyInstaller's MSYS2 devkit for native gems, Windows only) |
 | Perl | `perl` (≥ 5.32), the CPAN module installer (checked by loading `CPAN.pm`, so `cpan`'s interactive first-run setup never starts) | `cpanm` |
@@ -93,7 +95,7 @@ python3 -m devenv_check
 
 On Windows use `python` or `py` instead of `python3` if that is how Python is exposed.
 
-Only the environments you use most (Python, Go and Java unless `DEVENV_CHECK_FAVORITES` says otherwise):
+Only the environments you use most (Python, Go, Java and Node.js unless `DEVENV_CHECK_FAVORITES` says otherwise):
 
 ```bash
 python3 -m devenv_check --favorites
@@ -102,9 +104,9 @@ python3 -m devenv_check --favorites
 Options:
 
 ```
---favorites        check only your favorite environments: python, go and java by default;
-                   set DEVENV_CHECK_FAVORITES=env1,env2 to choose others (not combinable
-                   with --only)
+--favorites        check only your favorite environments: python, go, java and node by
+                   default; set DEVENV_CHECK_FAVORITES=env1,env2 to choose others (not
+                   combinable with --only)
 --deep             also build and run a hello world program in every environment
 --only java,go     check a subset: git, bash, java, kotlin, go, rust, dart, flutter,
                    python, php, ruby, perl, node, cpp, dotnet, docker, kubernetes,

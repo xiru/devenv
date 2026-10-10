@@ -85,7 +85,7 @@ class FavoritesTest(unittest.TestCase):
     def test_default_favorites(self):
         with mock.patch.dict("os.environ", {}, clear=True):
             args = cli.parse_args(["--favorites"])
-        self.assertEqual(args.only, ["python", "go", "java"])
+        self.assertEqual(args.only, ["python", "go", "java", "node"])
         self.assertTrue(set(cli.DEFAULT_FAVORITES) <= set(ENVIRONMENTS))
 
     def test_environment_variable_overrides(self):
@@ -106,7 +106,7 @@ class FavoritesTest(unittest.TestCase):
              mock.patch.object(cli, "run_checks", return_value=[]) as run_checks, \
              mock.patch("builtins.print"):
             cli.main(["--favorites", "--no-color"])
-        self.assertEqual(run_checks.call_args.args[1], ["python", "go", "java"])
+        self.assertEqual(run_checks.call_args.args[1], ["python", "go", "java", "node"])
 
 
 if __name__ == "__main__":
