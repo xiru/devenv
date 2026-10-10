@@ -5,3 +5,5 @@ build/
 dist/
 .venv/
 venv/
+package.json
+package-lock.json
