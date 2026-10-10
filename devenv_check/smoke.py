@@ -234,6 +234,25 @@ def smoke_flutter(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[
     )]
 
 
+# --------------------------------------------------------------------------- Python
+
+
+def smoke_python(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
+    python, venv = _find(tools, "python"), _find(tools, "venv (virtual environments)")
+    if not _usable(python) or venv is None or venv.status is not Status.OK:
+        return [_skipped("hello: Python (venv)", "python with a working venv not available")]
+    _write(work / "hello.py", 'import sys\n\nwho = "Python"\nprint(f"hello from {who} {sys.version_info.major}")\n')
+    venv_python = work / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    # No network: pip is only asked for its version inside the fresh environment.
+    return [build_and_run(
+        "hello: Python (venv)",
+        [([python.path, "-m", "venv", ".venv"], 180),
+         ([str(venv_python), "-m", "pip", "--version"], 60),
+         ([str(venv_python), "hello.py"], 30)],
+        "hello from Python 3", work, detail="created a venv, ran pip and the script inside it",
+    )]
+
+
 # --------------------------------------------------------------------------- Go
 
 
@@ -406,6 +425,7 @@ SMOKE_TESTS: dict[str, Callable[[PlatformInfo, list[ToolResult], Path], list[Too
     "rust": smoke_rust,
     "dart": smoke_dart,
     "flutter": smoke_flutter,
+    "python": smoke_python,
     "node": smoke_node,
     "cpp": smoke_cpp,
     "dotnet": smoke_dotnet,

@@ -41,6 +41,7 @@ EXTENSIONS: list[ExtensionSpec] = [
     # JVM development and is checked in those environments instead (see jetbrains.py).
     ExtensionSpec("Go", ("golang.go",)),
     ExtensionSpec("Rust", ("rust-lang.rust-analyzer",)),
+    ExtensionSpec("Python", ("ms-python.python",), note="includes Pylance and the debugger"),
     ExtensionSpec("Dart", ("dart-code.dart-code",)),
     ExtensionSpec("Flutter", ("dart-code.flutter",)),
     ExtensionSpec("ESLint (JS/TS)", ("dbaeumer.vscode-eslint",), required=False,

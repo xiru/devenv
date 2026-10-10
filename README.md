@@ -2,7 +2,7 @@
 
 Checks whether the current computer has the global tooling needed to develop,
 test and run applications in Bash, Java/Kotlin (with Gradle), Go, Rust,
-Dart/Flutter, JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes — plus Git
+Dart/Flutter, Python 3, JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes — plus Git
 and Visual Studio Code:
 
 | Environment | Required | Optional (reported as *partial* when missing) |
@@ -15,6 +15,7 @@ and Visual Studio Code:
 | Rust | `rustc` (≥ 1.80), `cargo`, a working linker (MSVC Build Tools on Windows, `cc` elsewhere) | `rustup`, `clippy`, `rustfmt` |
 | Dart | `dart` (≥ 3.0; the copy bundled with Flutter counts) | |
 | Flutter | `flutter` (≥ 3.22, read from `flutter --version --machine`) | every `flutter doctor` item (Android toolchain, Chrome, Visual Studio, Xcode, Linux toolchain, connected devices, …) as its own row |
+| Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | `virtualenv` |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` | global `tsc` |
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` or `ninja` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
@@ -40,6 +41,7 @@ is a recommendation (*partial*), not a failure, and comes with install/update in
 | Bash | `mads-hartmann.bash-ide-vscode` (or `timonwong.shellcheck`) optional |
 | Go | `golang.go` |
 | Rust | `rust-lang.rust-analyzer` |
+| Python | `ms-python.python` (includes Pylance and the debugger) |
 | Dart | `dart-code.dart-code` |
 | Flutter | `dart-code.flutter` |
 | JavaScript / TypeScript | built into VS Code; `dbaeumer.vscode-eslint` optional |
@@ -89,8 +91,8 @@ Options:
 
 ```
 --deep             also build and run a hello world program in every environment
---only java,go     check a subset: git, bash, java, kotlin, go, rust, dart, flutter, node,
-                   cpp, dotnet, docker, kubernetes, vscode
+--only java,go     check a subset: git, bash, java, kotlin, go, rust, dart, flutter,
+                   python, node, cpp, dotnet, docker, kubernetes, vscode
 --offline          skip VS Code / extension / IntelliJ IDEA update checks (no network access)
 --json             machine readable output (includes the fix commands)
 -v, --verbose      show where each tool was found
@@ -108,6 +110,16 @@ To have a `devenv-check` command available everywhere:
 python3 -m pip install .
 ```
 
+### Python 3 notes
+
+- `venv` is tested by really creating a virtual environment: Ubuntu/Debian ship the `venv` module
+  without `ensurepip`, so `python3 -m venv` fails until `python3-venv` is installed — the checker
+  reports the exact `apt install python3.X-venv` line Python prints.
+- When the system Python is *externally managed* (PEP 668, e.g. Ubuntu 23.04+), the pip row says
+  so: install packages inside a venv rather than system-wide.
+- The checker itself needs Python 3.11+; the *Python 3* environment reports the interpreter found
+  on PATH, which may differ from the one running the checker.
+
 ## Deep mode: hello world build & run
 
 `python3 -m devenv_check --deep` proves each toolchain actually works by building and
@@ -120,6 +132,7 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Kotlin | `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
 | Rust | `cargo build --offline` of a minimal crate, then the binary is run (proves the linker works too) |
 | Dart | `dart compile exe` (native AOT executable), then the executable is run |
+| Python 3 | creates a `.venv`, runs `pip --version` and a script with the venv's interpreter (no network) |
 | Flutter | `flutter create` of the template app, then `flutter test` runs its widget test headless — no device or emulator needed. The first run downloads the template's packages into the pub cache |
 | Java + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |

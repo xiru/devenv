@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
@@ -28,6 +29,7 @@ MIN_VERSIONS: dict[str, tuple[int, ...]] = {
     "rust": (1, 80),
     "dart": (3, 0),
     "flutter": (3, 22),
+    "python": (3, 11),
     "go": (1, 22),
     "node": (22,),
     "dotnet": (8,),
@@ -408,6 +410,91 @@ def check_flutter(p: PlatformInfo) -> list[ToolResult]:
     return [flutter, *validators]
 
 
+# --------------------------------------------------------------------------- Python
+
+# Runs inside the candidate interpreter; one line of JSON keeps parsing robust.
+_PYTHON_INFO = (
+    "import json, os, sys, sysconfig; print(json.dumps({"
+    "'version': '%d.%d.%d' % tuple(sys.version_info[:3]), 'executable': sys.executable, "
+    "'externally_managed': os.path.exists(os.path.join(sysconfig.get_path('stdlib'), 'EXTERNALLY-MANAGED'))}))"
+)
+
+
+def find_python(p: PlatformInfo) -> tuple[dict, str] | None:
+    """First working Python 3 as (info, launcher name).
+
+    Each candidate is actually run: on Windows `python`/`python3` may be Microsoft Store
+    stubs that only print an install message, and `py` is the Python launcher.
+    """
+    names = ["python", "py", "python3"] if p.system == "windows" else ["python3", "python"]
+    for name in names:
+        path = which(name)
+        if not path:
+            continue
+        res = run([path, *(["-3"] if name == "py" else []), "-c", _PYTHON_INFO], timeout=30)
+        try:
+            info = json.loads(res.stdout.strip().splitlines()[-1]) if res.ok and res.stdout.strip() else None
+        except (json.JSONDecodeError, IndexError):
+            info = None
+        if info and info.get("version", "").startswith("3."):
+            return info, name
+    return None
+
+
+def _python_error(result) -> str:
+    """Prefer the line that tells the user what to install (e.g. Ubuntu's python3-venv hint)."""
+    lines = [line.strip() for line in result.output.splitlines() if line.strip()]
+    for marker in ("apt install", "ensurepip"):  # an install command beats an explanation
+        for line in lines:
+            if marker in line:
+                return line
+    return lines[-1] if lines else f"exit code {result.returncode}"
+
+
+def check_venv(python: str) -> ToolResult:
+    """Create a throwaway venv: the only reliable test (Ubuntu ships venv without ensurepip)."""
+    name = "venv (virtual environments)"
+    with tempfile.TemporaryDirectory(prefix="devenv-check-venv-", ignore_cleanup_errors=True) as tmp:
+        res = run([python, "-m", "venv", str(Path(tmp, "env"))], timeout=180)
+    if res.ok:
+        return ToolResult(name, Status.OK, detail="created a virtual environment with pip")
+    return ToolResult(name, Status.MISSING, hint="venv", detail=f"cannot create a venv: {_python_error(res)}")
+
+
+def check_python(p: PlatformInfo) -> list[ToolResult]:
+    found = find_python(p)
+    if found is None:
+        return [ToolResult("python", Status.MISSING, hint="python",
+                           detail="no working Python 3 interpreter found (python3 / python / py)")]
+    info, launcher = found
+    exe = info["executable"]
+    python = ToolResult("python", Status.OK, version=info["version"], path=exe, provider=launcher,
+                        detail=f"via '{launcher}'", hint="python")
+    if (parse_version(info["version"]) or ()) < MIN_VERSIONS["python"]:
+        python.status = Status.WARN
+        python.detail += f"; older than recommended {format_version(MIN_VERSIONS['python'])}"
+
+    pip_res = run([exe, "-m", "pip", "--version"], timeout=60)
+    pip_version = parse_version(pip_res.output, r"pip (\d+)\.(\d+)(?:\.(\d+))?") if pip_res.ok else None
+    if pip_version:
+        pip = ToolResult("pip", Status.OK, version=format_version(pip_version))
+        if info.get("externally_managed"):
+            pip.detail = "system Python is externally managed (PEP 668): install packages inside a venv"
+    else:
+        pip = ToolResult("pip", Status.MISSING, hint="pip", detail=f"'{launcher} -m pip' failed: {_python_error(pip_res)}")
+
+    virtualenv = probe("virtualenv", [exe, "-m", "virtualenv", "--version"],
+                       pattern=r"virtualenv (\d+)\.(\d+)(?:\.(\d+))?", required=False, hint="virtualenv")
+    if virtualenv.status is Status.MISSING:
+        standalone = probe("virtualenv", ["virtualenv", "--version"], pattern=r"virtualenv (\d+)\.(\d+)(?:\.(\d+))?",
+                           required=False, hint="virtualenv")
+        virtualenv = standalone if standalone.status is not Status.MISSING else ToolResult(
+            "virtualenv", Status.MISSING, required=False, hint="virtualenv",
+            detail="not installed (the built-in venv covers most needs)")
+    virtualenv.path = None if virtualenv.path == exe else virtualenv.path
+    return [python, pip, check_venv(exe), virtualenv]
+
+
 # --------------------------------------------------------------------------- Go
 
 
@@ -600,6 +687,7 @@ ENVIRONMENTS: dict[str, tuple[str, Callable[[PlatformInfo], list[ToolResult]]]] 
     "rust": ("Rust", check_rust),
     "dart": ("Dart", check_dart),
     "flutter": ("Flutter", check_flutter),
+    "python": ("Python 3", check_python),
     "node": ("JavaScript / TypeScript (Node.js)", check_node),
     "cpp": ("C / C++", check_cpp),
     "dotnet": ("C# (.NET)", check_dotnet),
