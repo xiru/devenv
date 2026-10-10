@@ -570,14 +570,11 @@ def check_go(p: PlatformInfo) -> list[ToolResult]:
 
 
 def check_node(p: PlatformInfo) -> list[ToolResult]:
-    tsc = probe("tsc (TypeScript)", ["tsc", "--version"], required=False, hint="typescript")
-    if tsc.status is Status.MISSING and not tsc.path:
-        tsc.detail = "not installed globally (projects can still use a local copy via 'npx tsc')"
+    # TypeScript is not checked: projects install it locally (npm install --save-dev typescript), never globally.
     return [
         probe("node", ["node", "--version"], min_version=MIN_VERSIONS["node"], hint="node"),
         probe("npm", ["npm", "--version"], hint="node"),
         probe("npx", ["npx", "--version"], hint="node"),
-        tsc,
     ]
 
 

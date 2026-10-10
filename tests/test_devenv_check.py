@@ -118,6 +118,42 @@ class HintsTest(unittest.TestCase):
         self.assertFalse(any("{arch}" in line for line in lines))
 
 
+class ScoopOrChocoTest(unittest.TestCase):
+    WINDOWS = platform_for("windows")
+
+    def hints_with(self, installed, key="gradle"):
+        def fake_which(name):
+            return f"C:\\bin\\{name}.exe" if name in installed else None
+        with mock.patch.object(install_hints, "which", side_effect=fake_which):
+            return install_hints.hint_for(key, self.WINDOWS), install_hints.prerequisite_notes(
+                self.WINDOWS, ["gradle", "kotlin", "go", "gradle"])
+
+    def test_scoop_installed(self):
+        lines, notes = self.hints_with({"winget", "scoop", "choco"})
+        self.assertEqual(lines[0], "scoop install gradle")
+        self.assertFalse(any("Scoop" in note for note in notes))
+
+    def test_only_choco_installed(self):
+        lines, notes = self.hints_with({"winget", "choco"}, key="kotlin")
+        self.assertTrue(lines[0].startswith("choco install kotlinc -y"))
+        self.assertFalse(any("Scoop" in note for note in notes))
+
+    def test_neither_installed_bootstraps_scoop_once(self):
+        lines, notes = self.hints_with({"winget"})
+        self.assertEqual(lines[0], "scoop install gradle")
+        (note,) = notes
+        self.assertIn("gradle, kotlin need one", note)
+        self.assertIn("get.scoop.sh", note)
+
+    def test_no_note_when_nothing_needs_it(self):
+        with mock.patch.object(install_hints, "which", return_value=None):
+            notes = install_hints.prerequisite_notes(self.WINDOWS, ["go", "node"])
+        self.assertFalse(any("Scoop" in note for note in notes))
+
+    def test_other_platforms_untouched(self):
+        self.assertFalse(install_hints.needs_scoop_or_choco("gradle", platform_for("macos")))
+
+
 class ProbeTest(unittest.TestCase):
     def test_missing_tool(self):
         with mock.patch.object(checks, "which", return_value=None):

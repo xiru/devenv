@@ -345,7 +345,7 @@ def smoke_go(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolR
 
 
 def smoke_node(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    node, tsc = _find(tools, "node"), _find(tools, "tsc (TypeScript)")
+    node = _find(tools, "node")
     if not _usable(node):
         return [_skipped("hello: JavaScript", "node not available"), _skipped("hello: TypeScript", "node not available")]
 
@@ -355,17 +355,14 @@ def smoke_node(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Too
                              detail="ran with node")]
 
     version = parse_version(node.version or "") or ()
-    if _usable(tsc):
-        steps = [([tsc.path, "--outDir", "out", "hello.ts"], 180), ([node.path, str(Path("out", "hello.js"))], 60)]
-        detail = "compiled with tsc, ran with node"
-    elif version >= (23, 6) or (22, 18) <= version < (23,):
+    if version >= (23, 6) or (22, 18) <= version < (23,):
         steps, detail = [([node.path, "hello.ts"], 60)], "ran with Node.js built-in type stripping"
     elif version >= (22, 6):
         steps = [([node.path, "--experimental-strip-types", "hello.ts"], 60)]
         detail = "ran with Node.js --experimental-strip-types"
     else:
-        results.append(ToolResult("hello: TypeScript", Status.MISSING, kind="hello", hint="typescript",
-                                  detail="no global tsc and this Node.js cannot run .ts files"))
+        results.append(_skipped("hello: TypeScript", "this Node.js cannot run .ts files (needs 22.6+); "
+                                "projects compile with their own local TypeScript"))
         return results
     results.append(build_and_run("hello: TypeScript", steps, "hello from TypeScript", work, detail=detail))
     return results

@@ -52,14 +52,25 @@ class SmokeSelectionTest(unittest.TestCase):
         (result,) = smoke.run_smoke("go", LINUX, tools)
         self.assertIs(result.status, Status.SKIPPED)
 
-    def test_old_node_without_tsc_cannot_run_typescript(self):
-        tools = [ToolResult("node", Status.WARN, version="20.11.0", path="/usr/bin/node"),
-                 ToolResult("tsc (TypeScript)", Status.MISSING, required=False)]
+    def test_old_node_skips_typescript(self):
+        tools = [ToolResult("node", Status.WARN, version="20.11.0", path="/usr/bin/node")]
         with mock.patch.object(smoke, "run", return_value=ok("hello from JavaScript")):
             results = smoke.run_smoke("node", LINUX, tools)
-        ts = results[1]
-        self.assertIs(ts.status, Status.MISSING)
-        self.assertEqual(ts.hint, "typescript")
+        self.assertIs(results[1].status, Status.SKIPPED)
+        self.assertIn("local TypeScript", results[1].detail)
+
+    def test_typescript_runs_with_type_stripping(self):
+        tools = [ToolResult("node", Status.OK, version="24.4.0", path="/usr/bin/node")]
+        calls = []
+
+        def fake_run(args, **kwargs):
+            calls.append(args)
+            return ok("hello from TypeScript" if args[-1] == "hello.ts" else "hello from JavaScript")
+
+        with mock.patch.object(smoke, "run", side_effect=fake_run):
+            results = smoke.run_smoke("node", LINUX, tools)
+        self.assertIs(results[1].status, Status.OK)
+        self.assertEqual(calls[-1], ["/usr/bin/node", "hello.ts"])
 
     def test_msvc_build_goes_through_vcvars(self):
         compiler = ToolResult("C compiler", Status.OK, path=r"C:\VS\BuildTools", provider="MSVC")

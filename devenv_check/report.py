@@ -162,7 +162,7 @@ def render_text(platform: PlatformInfo, results: list[EnvResult], style: Style, 
     if hints and pending:
         out.append("")
         out.append(style.bold(f"How to fix ({platform.name}, using {manager_label(platform)}):"))
-        for note in prerequisite_notes(platform):
+        for note in prerequisite_notes(platform, [key for _, groups, _, _ in pending for key, _ in groups]):
             out.append(style.status(f"  {style.warn} {note}", Status.WARN))
         for env, groups, failures, fixable in pending:
             out.append("")
@@ -206,6 +206,6 @@ def render_json(platform: PlatformInfo, results: list[EnvResult]) -> str:
         "platform": asdict(platform),
         "python": ".".join(map(str, sys.version_info[:3])),
         "environments": environments,
-        "notes": prerequisite_notes(platform),
+        "notes": prerequisite_notes(platform, [fix["hint"] for env in environments for fix in env["fix"]]),
     }
     return json.dumps(payload, indent=2)

@@ -7,6 +7,9 @@ official documentation link in DOCS. `{arch}` is replaced with amd64/arm64.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
+
 from .platform_info import PlatformInfo
 from .runner import which
 
@@ -17,7 +20,6 @@ DOCS: dict[str, str] = {
     "go": "https://go.dev/doc/install",
     "go_path": "https://go.dev/doc/code#Command",
     "node": "https://nodejs.org/en/download",
-    "typescript": "https://www.typescriptlang.org/download/",
     "cpp": "https://code.visualstudio.com/docs/languages/cpp",
     "build_tools": "https://cmake.org/download/",
     "dotnet": "https://learn.microsoft.com/dotnet/core/install/",
@@ -30,7 +32,6 @@ DOCS: dict[str, str] = {
     "local_cluster": "https://kind.sigs.k8s.io/docs/user/quick-start/#installation",
 }
 
-_NPM_TS = ["npm install -g typescript"]
 _K8S_LOCAL = ["kind create cluster   (or: minikube start, or enable Kubernetes in Docker Desktop)"]
 
 HINTS: dict[str, dict[str, list[str]]] = {
@@ -50,7 +51,6 @@ HINTS: dict[str, dict[str, list[str]]] = {
             '[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$(go env GOPATH)\\bin", "User")',
         ],
         "node": ["winget install --id OpenJS.NodeJS.LTS -e"],
-        "typescript": _NPM_TS,
         "cpp": [
             'winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"',
             "# then build from 'Developer PowerShell for VS' so cl.exe is on PATH",
@@ -73,7 +73,6 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "go": ["brew install go"],
         "go_path": ["echo 'export PATH=\"$PATH:$(go env GOPATH)/bin\"' >> ~/.zshrc"],
         "node": ["brew install node"],
-        "typescript": _NPM_TS,
         "cpp": ["xcode-select --install"],
         "build_tools": ["brew install cmake ninja"],
         "dotnet": ["brew install --cask dotnet-sdk"],
@@ -103,7 +102,6 @@ HINTS: dict[str, dict[str, list[str]]] = {
         ],
         "go_path": ["echo 'export PATH=\"$PATH:$(go env GOPATH)/bin\"' >> ~/.bashrc"],
         "node": ["curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash", "nvm install --lts"],
-        "typescript": _NPM_TS,
         "cpp": ["Install gcc, g++ and make with your distribution's package manager"],
         "build_tools": ["Install cmake and ninja (or make) with your distribution's package manager"],
         "dotnet": ["curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel LTS", "echo 'export PATH=$PATH:$HOME/.dotnet' >> ~/.bashrc"],
@@ -193,7 +191,6 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "gradle": ["sudo pacman -S --needed gradle"],
         "go": ["sudo pacman -S --needed go"],
         "node": ["sudo pacman -S --needed nodejs npm"],
-        "typescript": ["sudo pacman -S --needed typescript"],
         "cpp": ["sudo pacman -S --needed base-devel"],
         "build_tools": ["sudo pacman -S --needed cmake ninja"],
         "dotnet": ["sudo pacman -S --needed dotnet-sdk"],
@@ -646,11 +643,22 @@ def manager_label(platform: PlatformInfo) -> str:
     return f"{label} inside WSL" if platform.wsl else label
 
 
-def hint_for(key: str, platform: PlatformInfo) -> list[str]:
-    """Installation lines for `key` on this platform (may be empty).
+# Windows packages missing from winget (e.g. Gradle, Kotlin) are written as
+# "scoop install X   (or: choco install Y)"; hint_for keeps only the manager that is installed.
+_SCOOP_OR_CHOCO = re.compile(r"^scoop install (?P<scoop>.+?)\s+\(or: choco install (?P<choco>.+)\)$")
+# Scoop installs per user without admin rights, so it is the one suggested when neither is present.
+SCOOP_BOOTSTRAP = [
+    "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser",
+    "Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression",
+]
 
-    Lookup order: WSL-specific, distro family, then generic Linux.
-    """
+
+def windows_extra_manager() -> str | None:
+    """'scoop' or 'choco' when one is installed (scoop preferred), otherwise None."""
+    return next((name for name in ("scoop", "choco") if which(name)), None)
+
+
+def _raw_hint(key: str, platform: PlatformInfo) -> list[str]:
     tables = (["wsl"] if platform.wsl else []) + [platform.family] + (["linux"] if platform.system == "linux" else [])
     for table in tables:
         lines = HINTS.get(table, {}).get(key)
@@ -659,11 +667,41 @@ def hint_for(key: str, platform: PlatformInfo) -> list[str]:
     return []
 
 
-def prerequisite_notes(platform: PlatformInfo) -> list[str]:
-    """Things to know before running the suggested commands."""
+def needs_scoop_or_choco(key: str, platform: PlatformInfo) -> bool:
+    return any(_SCOOP_OR_CHOCO.match(line) for line in _raw_hint(key, platform))
+
+
+def hint_for(key: str, platform: PlatformInfo) -> list[str]:
+    """Installation lines for `key` on this platform (may be empty).
+
+    Lookup order: WSL-specific, distro family, then generic Linux.
+    """
+    lines = _raw_hint(key, platform)
+    if not any(_SCOOP_OR_CHOCO.match(line) for line in lines):
+        return lines
+    manager = windows_extra_manager()
+    out = []
+    for line in lines:
+        match = _SCOOP_OR_CHOCO.match(line)
+        if not match:
+            out.append(line)
+        elif manager == "choco":
+            out.append(f"choco install {match['choco']} -y   (from an elevated terminal)")
+        else:  # scoop installed, or about to be bootstrapped (see prerequisite_notes)
+            out.append(f"scoop install {match['scoop']}")
+    return out
+
+
+def prerequisite_notes(platform: PlatformInfo, keys: Iterable[str] = ()) -> list[str]:
+    """Things to know before running the suggested commands for the hint `keys`."""
     notes = []
     if platform.family == "windows" and which("winget") is None:
         notes.append("winget not found: install/update 'App Installer' from the Microsoft Store.")
+    if platform.family == "windows" and windows_extra_manager() is None:
+        needing = [key for key in dict.fromkeys(keys) if needs_scoop_or_choco(key, platform)]
+        if needing:
+            notes.append(f"Neither Scoop nor Chocolatey found, and {', '.join(needing)} need one. "
+                         "Install Scoop first (per user, no admin), in PowerShell: " + "; ".join(SCOOP_BOOTSTRAP))
     if platform.family == "macos" and which("brew") is None:
         notes.append('Homebrew not found: /bin/bash -c "$(curl -fsSL '
                      'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"')

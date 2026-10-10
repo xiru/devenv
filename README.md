@@ -21,7 +21,7 @@ plus Git and Visual Studio Code:
 | PHP + Composer | `php` (≥ 8.2), `composer` | |
 | Ruby + Bundler | `ruby` (≥ 3.2; macOS's deprecated system Ruby is flagged), `gem`, `bundle` | `ridk` (RubyInstaller's MSYS2 devkit for native gems, Windows only) |
 | Perl | `perl` (≥ 5.32), the CPAN module installer (checked by loading `CPAN.pm`, so `cpan`'s interactive first-run setup never starts) | `cpanm` |
-| JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` | global `tsc` |
+| JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` or `ninja` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
 | Docker | `docker` CLI and a reachable engine/daemon | `docker compose` |
@@ -72,7 +72,8 @@ When something is missing it prints install commands for the detected OS.
 **Primary targets** (tested on real machines):
 
 - **Windows 11** — winget package IDs (verified against the winget catalog); scoop/choco for
-  Gradle, which is not in winget; MSVC Build Tools detected through `vswhere`.
+  Gradle and Kotlin, which are not in winget (the command uses whichever is installed; with
+  neither, the fix starts with installing Scoop, which needs no admin rights); MSVC Build Tools detected through `vswhere`.
 - **Ubuntu** — apt for system packages; SDKMAN!, nvm and the official Go tarball/snap where
   Ubuntu's packages lag behind upstream.
 - **WSL running Ubuntu** — detected automatically. Windows binaries leaking in through the
@@ -157,7 +158,7 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Flutter | `flutter create` of the template app, then `flutter test` runs its widget test headless — no device or emulator needed. The first run downloads the template's packages into the pub cache |
 | Java + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |
-| JavaScript / TypeScript | `node hello.js`; `hello.ts` compiled with a global `tsc`, or run with Node's built-in type stripping (Node ≥ 22.6) |
+| JavaScript / TypeScript | `node hello.js`; `hello.ts` run with Node's built-in type stripping (Node ≥ 22.6; skipped on older versions) |
 | C / C++ | compile + run with gcc/g++, clang/clang++, or MSVC (loads `vcvars64.bat` automatically when `cl.exe` isn't on PATH) |
 | C# | `dotnet build` + `dotnet run` of a console project targeting the newest SDK |
 | Docker | `docker build` of a `FROM hello-world` image, `docker run`, then the image is removed |
