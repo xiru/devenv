@@ -25,7 +25,7 @@ plus Git and Visual Studio Code:
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` or `ninja` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
 | Docker | `docker` CLI and a reachable engine/daemon | `docker compose` |
-| Kubernetes | `kubectl` | current kube context, `helm`, `kind`/`minikube`/`k3d` |
+| Kubernetes | `kubectl` | current kube context, `helm`, `k3d`/`kind`/`minikube` |
 | Visual Studio Code | `code`, plus the main extension per language (see below), installed and up to date | Bash, ESLint, CMake Tools, WSL (Windows) |
 
 ### IntelliJ IDEA for Java and Kotlin

@@ -27,12 +27,12 @@ DOCS: dict[str, str] = {
     "docker_daemon": "https://docs.docker.com/engine/daemon/start/",
     "docker_compose": "https://docs.docker.com/compose/install/",
     "kubectl": "https://kubernetes.io/docs/tasks/tools/",
-    "kube_context": "https://kind.sigs.k8s.io/docs/user/quick-start/",
+    "kube_context": "https://k3d.io/stable/usage/commands/k3d_cluster_create/",
     "helm": "https://helm.sh/docs/intro/install/",
-    "local_cluster": "https://kind.sigs.k8s.io/docs/user/quick-start/#installation",
+    "local_cluster": "https://k3d.io/stable/#installation",
 }
 
-_K8S_LOCAL = ["kind create cluster   (or: minikube start, or enable Kubernetes in Docker Desktop)"]
+_K8S_LOCAL = ["k3d cluster create dev   (or: kind create cluster, or enable Kubernetes in Docker Desktop)"]
 
 HINTS: dict[str, dict[str, list[str]]] = {
     "windows": {
@@ -64,7 +64,7 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "kubectl": ["winget install --id Kubernetes.kubectl -e"],
         "kube_context": _K8S_LOCAL,
         "helm": ["winget install --id Helm.Helm -e"],
-        "local_cluster": ["winget install --id Kubernetes.kind -e   (or: winget install --id Kubernetes.minikube -e)"],
+        "local_cluster": ["winget install --id k3d.k3d -e   (or: winget install --id Kubernetes.kind -e)"],
     },
     "macos": {
         "java": ["brew install --cask temurin@21"],
@@ -82,7 +82,7 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "kubectl": ["brew install kubectl"],
         "kube_context": _K8S_LOCAL,
         "helm": ["brew install helm"],
-        "local_cluster": ["brew install kind   (or: brew install minikube)"],
+        "local_cluster": ["brew install k3d   (or: brew install kind)"],
     },
     # Generic Linux: distro-independent installers, used when a family has no entry.
     "linux": {
@@ -114,10 +114,7 @@ HINTS: dict[str, dict[str, list[str]]] = {
         ],
         "kube_context": _K8S_LOCAL,
         "helm": ["curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"],
-        "local_cluster": [
-            "curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-{arch}",
-            "sudo install minikube-linux-{arch} /usr/local/bin/minikube",
-        ],
+        "local_cluster": ["curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"],
     },
     # Debian / Ubuntu (also used inside WSL running Ubuntu, below the "wsl" table).
     "debian": {
@@ -166,7 +163,7 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "docker_compose": ["Included with Docker Desktop's WSL integration; for an engine inside WSL: sudo apt install -y docker-compose-plugin"],
         "kube_context": [
             "Enable Kubernetes in Docker Desktop (Settings > Kubernetes); its context is shared with WSL",
-            "or create a local cluster: kind create cluster",
+            "or create a local cluster: k3d cluster create dev",
         ],
         "go": [
             "# snap needs systemd in WSL; the official tarball always works:",
@@ -198,7 +195,6 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "docker_compose": ["sudo pacman -S --needed docker-compose"],
         "kubectl": ["sudo pacman -S --needed kubectl"],
         "helm": ["sudo pacman -S --needed helm"],
-        "local_cluster": ["sudo pacman -S --needed minikube"],
     },
     "suse": {
         "java": ["sudo zypper install -y java-21-openjdk-devel"],
