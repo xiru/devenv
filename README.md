@@ -138,7 +138,7 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Java / Kotlin + Gradle | `javac` + `java`; with `gradle`, a Gradle `application` project via `gradle run --offline --no-daemon`; with `kotlinc`, `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |
 | JavaScript / TypeScript | `node hello.js`; `hello.ts` run with Node's built-in type stripping (Node ≥ 22.6; skipped on older versions) |
-| C / C++ | compile + run with gcc/g++, clang/clang++, or MSVC (loads `vcvars64.bat` automatically when `cl.exe` isn't on PATH) |
+| C / C++ | compile + run with gcc/g++, clang/clang++, or MSVC (loads `vcvars64.bat` automatically when `cl.exe` isn't on PATH); with `make`, a `Makefile` building the C program with gcc/clang; with `cmake`, a C++ `CMakeLists.txt` project configured, built and run (Visual Studio generator for MSVC, `MinGW Makefiles` for gcc/clang on Windows) |
 | C# | `dotnet build` + `dotnet run` of a console project targeting the newest SDK |
 | Docker | `docker build` of a `FROM hello-world` image, `docker run`, then the image is removed |
 | Kubernetes | a `busybox` pod that echoes and is removed (`kubectl run --rm`) — **only** on local clusters (docker-desktop, kind-\*, minikube, k3d-\*, rancher-desktop, …). Any other context gets a server-side dry run, so nothing is ever created in a shared cluster |

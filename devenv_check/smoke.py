@@ -285,7 +285,64 @@ def smoke_cpp(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Tool
             expected, d,
             detail=f"compiled with {compiler.provider}",
         ))
+    results.append(_smoke_make(tools, work / "make"))
+    results.append(_smoke_cmake(p, tools, work / "cmake"))
     return results
+
+
+# A tab starts every recipe line; the quotes keep a compiler path with spaces in one piece.
+MAKEFILE = 'hello{exe}: hello.c\n\t"$(CC)" hello.c -o hello{exe}\n'
+
+CMAKE_LISTS = """cmake_minimum_required(VERSION 3.10)
+project(hello CXX)
+add_executable(hello hello.cpp)
+# A generator expression stops multi-config generators (Visual Studio) from adding a Debug/ folder.
+set_target_properties(hello PROPERTIES RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}/bin>")
+"""
+
+GNU_LIKE = ("gcc", "g++", "clang", "clang++")
+
+
+def _smoke_make(tools: list[ToolResult], d: Path) -> ToolResult:
+    name = "hello: make"
+    make, compiler = _find(tools, "make"), _find(tools, "C compiler")
+    if not _usable(make):
+        return _skipped(name, "make not available")
+    if not _usable(compiler) or compiler.provider not in GNU_LIKE:
+        return _skipped(name, "make is tested with gcc or clang; none available")
+    _write(d / "hello.c", C_SOURCE)
+    _write(d / "Makefile", MAKEFILE.format(exe=EXE))
+    return build_and_run(
+        name,
+        [([make.path, f"CC={compiler.path}"], 300), ([str(d / f"hello{EXE}")], 30)],
+        "hello from C", d, detail=f"{make.provider} built hello.c with {compiler.provider}",
+    )
+
+
+def _smoke_cmake(p: PlatformInfo, tools: list[ToolResult], d: Path) -> ToolResult:
+    name = "hello: CMake project"
+    cmake, compiler, make = _find(tools, "cmake"), _find(tools, "C++ compiler"), _find(tools, "make")
+    if not _usable(cmake):
+        return _skipped(name, "cmake not available")
+    if not _usable(compiler):
+        return _skipped(name, "no c++ compiler")
+    configure = [cmake.path, "-S", ".", "-B", "build"]
+    if compiler.provider in GNU_LIKE:
+        configure.append(f"-DCMAKE_CXX_COMPILER={compiler.path}")
+        if p.system == "windows":
+            # The default Windows generator is Visual Studio; gcc/clang (MinGW) build through make.
+            if not _usable(make):
+                return _skipped(name, f"cmake with {compiler.provider} on Windows needs make")
+            configure += ["-G", "MinGW Makefiles", f"-DCMAKE_MAKE_PROGRAM={make.path}"]
+    # With MSVC, cmake's default Visual Studio generator locates the compiler itself.
+    _write(d / "hello.cpp", CPP_SOURCE)
+    _write(d / "CMakeLists.txt", CMAKE_LISTS)
+    return build_and_run(
+        name,
+        [(configure, 300), ([cmake.path, "--build", "build", "--config", "Release"], 300),
+         ([str(d / "build" / "bin" / f"hello{EXE}")], 30)],
+        "hello from C++", d, detail=f"cmake configure + build with {compiler.provider}",
+    )
 
 
 # --------------------------------------------------------------------------- C#
