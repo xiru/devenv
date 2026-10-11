@@ -148,11 +148,28 @@ class MakeSmokeTest(unittest.TestCase):
         self.assertIn(["/usr/bin/make", "CC=/usr/bin/gcc"], smoke_run.commands)
         self.assertIn('\t"$(CC)" hello.c -o hello', smoke_run.written["Makefile"])
 
-    def test_make_needs_gcc_or_clang(self):
-        msvc = [tool("C compiler", r"C:\BuildTools", provider="MSVC"), tool("make", provider="mingw32-make")]
-        results, _ = self.results(msvc, WINDOWS)
+    def test_make_with_msvc_runs_inside_vcvars(self):
+        msvc = [tool("C compiler", r"C:\BuildTools", provider="MSVC"), tool("make", r"C:\bin\make.exe", provider="make")]
+        results, smoke_run = self.results(msvc, WINDOWS)
+        self.assertEqual(results["hello: make"].detail, "make built hello.c with MSVC")
+        self.assertEqual(Path(smoke_run.commands[-2][-1]).name, "build.bat")
+        script = smoke_run.written["build.bat"]
+        self.assertIn("vcvars64.bat", script)
+        self.assertIn('"C:\\bin\\make.exe" CC=cl\r\n', script)
+        self.assertIn('\t"$(CC)" -nologo hello.c -Fehello.exe', smoke_run.written["Makefile"])
+
+    def test_make_with_cl_on_path(self):
+        cl = [tool("C compiler", r"C:\VS\cl.exe", provider="cl"), tool("make", r"C:\bin\make.exe", provider="make")]
+        results, smoke_run = self.results(cl, WINDOWS)
+        self.assertEqual(results["hello: make"].status, Status.OK)
+        self.assertIn([r"C:\bin\make.exe", r"CC=C:\VS\cl.exe"], smoke_run.commands)
+        self.assertIn("-Fehello.exe", smoke_run.written["Makefile"])
+
+    def test_make_needs_a_known_compiler(self):
+        other = [tool("C compiler", "/opt/tcc", provider="tcc"), tool("make", provider="make")]
+        results, _ = self.results(other)
         self.assertEqual(results["hello: make"].status, Status.SKIPPED)
-        self.assertIn("gcc or clang", results["hello: make"].detail)
+        self.assertIn("gcc, clang or MSVC", results["hello: make"].detail)
 
 
 if __name__ == "__main__":

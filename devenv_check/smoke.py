@@ -253,15 +253,20 @@ C_SOURCE = '#include <stdio.h>\n\nint main(void) {\n    printf("hello from C\\n"
 CPP_SOURCE = '#include <iostream>\n\nint main() {\n    std::cout << "hello from C++" << std::endl;\n    return 0;\n}\n'
 
 
+def _vcvars_step(p: PlatformInfo, compiler: ToolResult, command: str, workdir: Path) -> list[str]:
+    """Run `command` after loading the Visual Studio environment (cl.exe is not on PATH).
+
+    A batch file keeps the quoting of the vcvars path under our control.
+    """
+    vcvars = Path(compiler.path, "VC", "Auxiliary", "Build",
+                  "vcvarsarm64.bat" if p.arch == "arm64" else "vcvars64.bat")
+    script = _write(workdir / "build.bat", f'@echo off\r\ncall "{vcvars}" >nul || exit /b 1\r\n{command}\r\n')
+    return [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(script)]
+
+
 def _compile_step(p: PlatformInfo, compiler: ToolResult, source: str, workdir: Path) -> list[str]:
     if compiler.provider == "MSVC":
-        # cl.exe is not on PATH: load the Visual Studio environment first, via a batch file
-        # so that quoting of the vcvars path stays under our control.
-        vcvars = Path(compiler.path, "VC", "Auxiliary", "Build",
-                      "vcvarsarm64.bat" if p.arch == "arm64" else "vcvars64.bat")
-        script = _write(workdir / "build.bat",
-                        f'@echo off\r\ncall "{vcvars}" >nul || exit /b 1\r\ncl /nologo /EHsc {source} /Fe:hello.exe\r\n')
-        return [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(script)]
+        return _vcvars_step(p, compiler, f"cl /nologo /EHsc {source} /Fe:hello.exe", workdir)
     if compiler.provider == "cl":
         return [compiler.path, "/nologo", "/EHsc", source, "/Fe:hello.exe"]
     return [compiler.path, source, "-o", f"hello{EXE}"]
@@ -285,28 +290,40 @@ def smoke_cpp(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Tool
             expected, d,
             detail=f"compiled with {compiler.provider}",
         ))
-    results.append(_smoke_make(tools, work / "make"))
+    results.append(_smoke_make(p, tools, work / "make"))
     return results
 
 
 # A tab starts every recipe line; the quotes keep a compiler path with spaces in one piece.
 MAKEFILE = 'hello{exe}: hello.c\n\t"$(CC)" hello.c -o hello{exe}\n'
+# cl.exe accepts "-" as well as "/" options; "-" survives a recipe run through an MSYS sh,
+# which would rewrite "/nologo" into a file path.
+MAKEFILE_MSVC = 'hello.exe: hello.c\n\t"$(CC)" -nologo hello.c -Fehello.exe\n'
 
 GNU_LIKE = ("gcc", "clang")
+MSVC_LIKE = ("MSVC", "cl")
 
 
-def _smoke_make(tools: list[ToolResult], d: Path) -> ToolResult:
+def _smoke_make(p: PlatformInfo, tools: list[ToolResult], d: Path) -> ToolResult:
     name = "hello: make"
     make, compiler = _find(tools, "make"), _find(tools, "C compiler")
     if not _usable(make):
         return _skipped(name, "make not available")
-    if not _usable(compiler) or compiler.provider not in GNU_LIKE:
-        return _skipped(name, "make is tested with gcc or clang; none available")
+    if not _usable(compiler) or compiler.provider not in GNU_LIKE + MSVC_LIKE:
+        return _skipped(name, "make is tested with gcc, clang or MSVC; none available")
     _write(d / "hello.c", C_SOURCE)
-    _write(d / "Makefile", MAKEFILE.format(exe=EXE))
+    if compiler.provider == "MSVC":
+        _write(d / "Makefile", MAKEFILE_MSVC)
+        build = _vcvars_step(p, compiler, f'"{make.path}" CC=cl', d)
+    elif compiler.provider == "cl":
+        _write(d / "Makefile", MAKEFILE_MSVC)
+        build = [make.path, f"CC={compiler.path}"]
+    else:
+        _write(d / "Makefile", MAKEFILE.format(exe=EXE))
+        build = [make.path, f"CC={compiler.path}"]
     return build_and_run(
         name,
-        [([make.path, f"CC={compiler.path}"], 300), ([str(d / f"hello{EXE}")], 30)],
+        [(build, 300), ([str(d / f"hello{EXE}")], 30)],
         "hello from C", d, detail=f"{make.provider} built hello.c with {compiler.provider}",
     )
 
