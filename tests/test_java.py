@@ -1,4 +1,4 @@
-"""Java + Gradle: java, javac, JAVA_HOME, gradle and the javac / Gradle hello worlds."""
+"""Java / Kotlin + Gradle: java, javac, JAVA_HOME, gradle, kotlinc and the javac / Gradle / Kotlin hello worlds."""
 
 import os
 import unittest
@@ -31,6 +31,9 @@ class VersionTest(unittest.TestCase):
         self.assertEqual(parse_version('openjdk version "21" 2023-09-19', JAVA_VERSION), (21,))
         self.assertEqual(parse_version('openjdk version "17.0.12" 2024-07-16', JAVA_VERSION), (17, 0, 12))
         self.assertEqual(parse_version(ORACLE_SETTINGS, JAVA_VERSION), (27,))
+
+    def test_kotlinc_format(self):
+        self.assertEqual(parse_version("info: kotlinc-jvm 2.1.0 (JRE 21.0.2+13-LTS)", r"kotlinc-jvm (\d+)\.(\d+)\.(\d+)"), (2, 1, 0))
 
     def test_legacy_1_x_versions(self):
         self.assertEqual(checks._java_legacy(parse_version('java version "1.8.0_381"', JAVA_VERSION)), (8, 0))
@@ -93,10 +96,11 @@ class CheckJavaTest(unittest.TestCase):
 
     def test_full_jdk_with_gradle(self):
         tools = self.check({"java": 'openjdk version "21.0.5" 2024-10-15', "javac": "javac 21.0.5",
-                            "gradle": "\n------\nGradle 8.11.1\n------\n"})
-        self.assertEqual((tools["java"].version, tools["javac (JDK)"].version, tools["gradle"].version),
-                         ("21.0.5", "21.0.5", "8.11.1"))
-        self.assertEqual(list(tools), ["java", "javac (JDK)", "JAVA_HOME", "gradle", "IntelliJ IDEA (IDE)"])
+                            "gradle": "\n------\nGradle 8.11.1\n------\n",
+                            "kotlinc": "info: kotlinc-jvm 2.1.0 (JRE 21.0.5)"})
+        self.assertEqual((tools["java"].version, tools["javac (JDK)"].version, tools["gradle"].version, tools["kotlinc"].version),
+                         ("21.0.5", "21.0.5", "8.11.1", "2.1.0"))
+        self.assertEqual(list(tools), ["java", "javac (JDK)", "JAVA_HOME", "gradle", "kotlinc", "IntelliJ IDEA (IDE)"])
 
     def test_old_java_warns(self):
         self.assertIs(self.check({"java": 'java version "1.8.0_381"', "javac": "javac 1.8.0_381"})["java"].status, Status.WARN)
@@ -110,6 +114,13 @@ class CheckJavaTest(unittest.TestCase):
         tools = self.check({})
         self.assertNotIn("only a JRE", tools["javac (JDK)"].detail)
         self.assertIs(tools["gradle"].status, Status.MISSING)
+
+    def test_kotlin_is_optional(self):
+        kotlinc = self.check({"java": 'openjdk version "21"', "javac": "javac 21"})["kotlinc"]
+        self.assertEqual((kotlinc.status, kotlinc.required, kotlinc.hint), (Status.MISSING, False, "kotlin"))
+
+    def test_old_kotlin_warns(self):
+        self.assertIs(self.check({"kotlinc": "info: kotlinc-jvm 1.9.24 (JRE 17)"})["kotlinc"].status, Status.WARN)
 
     def test_detected_home_is_compared_with_java_home(self):
         with fake_system({"java": 'openjdk version "21"', "javac": "javac 21"}), \
@@ -128,26 +139,30 @@ class CheckJavaTest(unittest.TestCase):
 
 class JavaSmokeTest(unittest.TestCase):
     def output(self, args):
-        return "hello from Gradle" if "run" in args else "hello from Java"
+        return "hello from Gradle" if "run" in args else "hello from Kotlin" if "-jar" in args else "hello from Java"
 
-    def test_javac_and_gradle(self):
-        smoke_run = run_smoke("java", [tool("java"), tool("javac (JDK)"), tool("gradle")], self.output)
-        javac, gradle = smoke_run.results
-        self.assertEqual((javac.status, gradle.status), (Status.OK, Status.OK))
+    def test_javac_gradle_and_kotlin(self):
+        smoke_run = run_smoke("java", [tool("java"), tool("javac (JDK)"), tool("gradle"), tool("kotlinc")], self.output)
+        self.assertEqual([result.status for result in smoke_run.results], [Status.OK] * 3)
         self.assertEqual(smoke_run.commands[0], ["/usr/bin/javac", "Hello.java"])
         self.assertEqual(smoke_run.commands[1], ["/usr/bin/java", "-cp", ".", "Hello"])
         self.assertIn("--offline", smoke_run.commands[2])
         self.assertIn("--no-daemon", smoke_run.commands[2])  # no JVM left running afterwards
         self.assertIn("mainClass = 'Hello'", smoke_run.written["build.gradle"])
+        self.assertEqual(smoke_run.commands[3], ["/usr/bin/kotlinc", "hello.kt", "-include-runtime", "-d", "hello.jar"])
+        self.assertEqual(smoke_run.commands[4], ["/usr/bin/java", "-jar", "hello.jar"])
 
-    def test_without_a_jdk_or_gradle(self):
-        javac, gradle = run_smoke("java", [tool("java"), tool("javac (JDK)", status=Status.MISSING)]).results
-        self.assertEqual((javac.status, gradle.status), (Status.SKIPPED, Status.SKIPPED))
+    def test_without_a_jdk_gradle_or_kotlin(self):
+        results = run_smoke("java", [tool("java"), tool("javac (JDK)", status=Status.MISSING)]).results
+        self.assertEqual([result.status for result in results], [Status.SKIPPED] * 3)
+        self.assertEqual(results[2].name, "hello: Kotlin")
 
 
 class JavaHintsTest(unittest.TestCase):
-    def test_gradle_on_windows_uses_scoop_or_choco(self):
+    def test_gradle_and_kotlin_on_windows_use_scoop_or_choco(self):
         self.assertTrue(install_hints.needs_scoop_or_choco("gradle", WINDOWS))
+        self.assertTrue(install_hints.needs_scoop_or_choco("kotlin", WINDOWS))
+        self.assertIn("JDK", " ".join(install_hints.hint_for("kotlin", WINDOWS)))
 
     def test_jvm_hints_never_suggest_vscode(self):
         for family in FAMILIES:

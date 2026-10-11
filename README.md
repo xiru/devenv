@@ -11,8 +11,7 @@ plus Git and Visual Studio Code:
 |---|---|---|
 | Git | `git` (≥ 2.34) | global `user.name` / `user.email` |
 | Bash scripting | `bash` (≥ 4.0; on Windows Git Bash, falling back to WSL's bash) | `shellcheck`, `shfmt` |
-| Java + Gradle | `java` (≥ 17), `javac` (a JDK, not just a JRE), `gradle` | `JAVA_HOME` set and valid; IntelliJ IDEA (installed and up to date) |
-| Kotlin | `kotlinc` (≥ 2.0) and a `java` to run it (Gradle is checked under Java + Gradle) | IntelliJ IDEA (installed and up to date) |
+| Java / Kotlin + Gradle | `java` (≥ 17), `javac` (a JDK, not just a JRE), `gradle` | `JAVA_HOME` set and valid; `kotlinc` (≥ 2.0); IntelliJ IDEA (installed and up to date) |
 | Go | `go` (≥ 1.22) | Go bin directory (`GOBIN` / `GOPATH/bin`) on `PATH` |
 | Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
@@ -25,8 +24,8 @@ plus Git and Visual Studio Code:
 ### IntelliJ IDEA for Java and Kotlin
 
 Java, Gradle and Kotlin development is pointed at **IntelliJ IDEA**, never at VS Code: the
-VS Code check has no Java/Gradle/Kotlin extensions, and the Java + Gradle and Kotlin environments
-include an *IntelliJ IDEA (IDE)* row instead. Installations are found through their
+VS Code check has no Java/Gradle/Kotlin extensions, and the Java / Kotlin + Gradle environment
+includes an *IntelliJ IDEA (IDE)* row instead. Installations are found through their
 `product-info.json` (standalone installers, JetBrains Toolbox, Homebrew, snap, `/opt`; from WSL also
 the Windows install), so the IDE is never launched. The version is compared with the latest
 release from JetBrains' public releases API (skipped with `--offline`). A missing or outdated IDE
@@ -97,7 +96,7 @@ Options:
                    default; set DEVENV_CHECK_FAVORITES=env1,env2 to choose others (not
                    combinable with --only)
 --deep             also build and run a hello world program in every environment
---only java,go     check a subset: git, bash, java, kotlin, go, python, node, cpp,
+--only java,go     check a subset: git, bash, java, go, python, node, cpp,
                    dotnet, docker, kubernetes, vscode
 --offline          skip VS Code / extension / IntelliJ IDEA update checks (no network access)
 --json             machine readable output (includes the fix commands)
@@ -135,9 +134,8 @@ running a tiny program in a temporary directory (deleted afterwards):
 |---|---|
 | Git | `init`, `add`, `commit`, `log` in a temporary repository (your hooks, signing and identity settings are bypassed) |
 | Bash scripting | a `set -euo pipefail` script using a function and an array, linted with `shellcheck` first when installed |
-| Kotlin | `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
 | Python 3 | creates a `.venv`, runs `pip --version` and a script with the venv's interpreter (no network) |
-| Java + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon` |
+| Java / Kotlin + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon`; with `kotlinc`, `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |
 | JavaScript / TypeScript | `node hello.js`; `hello.ts` run with Node's built-in type stripping (Node ≥ 22.6; skipped on older versions) |
 | C / C++ | compile + run with gcc/g++, clang/clang++, or MSVC (loads `vcvars64.bat` automatically when `cl.exe` isn't on PATH) |
@@ -177,6 +175,6 @@ The suite needs no tools installed: every check reaches the system only through 
   (OS / distro / WSL detection), `test_probe.py` (locating tools), `test_environments.py` (status
   aggregation, running checks), `test_install_hints.py`, `test_report.py`, `test_cli.py` and
   `test_smoke_framework.py` (the machinery behind `--deep`).
-- **One file per environment**: `test_git.py`, `test_bash.py`, `test_java.py`, `test_kotlin.py`,
-  `test_go.py`, `test_python.py`, `test_node.py`, `test_cpp.py`, `test_dotnet.py`, `test_docker.py`,
+- **One file per environment**: `test_git.py`, `test_bash.py`, `test_java.py`, `test_go.py`,
+  `test_python.py`, `test_node.py`, `test_cpp.py`, `test_dotnet.py`, `test_docker.py`,
   `test_kubernetes.py`, `test_vscode.py` and `test_intellij.py`. Each holds that environment's installation check, its hello world test and its install hints.

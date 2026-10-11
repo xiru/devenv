@@ -135,13 +135,13 @@ def smoke_bash(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Too
     return [build_and_run("hello: Bash script", steps, "hello from bash", work, detail=detail)]
 
 
-# --------------------------------------------------------------------------- Java + Gradle
+# --------------------------------------------------------------------------- Java / Kotlin + Gradle
 
 JAVA_SOURCE = 'public class Hello {{ public static void main(String[] args) {{ System.out.println("hello from {who}"); }} }}\n'
 
 
 def smoke_java(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    java, javac, gradle = _find(tools, "java"), _find(tools, "javac (JDK)"), _find(tools, "gradle")
+    java, javac, gradle, kotlinc = (_find(tools, name) for name in ("java", "javac (JDK)", "gradle", "kotlinc"))
     results = []
 
     if _usable(java) and _usable(javac):
@@ -168,23 +168,19 @@ def smoke_java(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[Too
         ))
     else:
         results.append(_skipped("hello: Gradle project", "gradle or java not available"))
+
+    if _usable(kotlinc) and _usable(java):
+        d = work / "kotlin"
+        _write(d / "hello.kt", 'fun main() {\n    val who = "Kotlin"\n    println("hello from $who")\n}\n')
+        results.append(build_and_run(
+            "hello: Kotlin",
+            [([kotlinc.path, "hello.kt", "-include-runtime", "-d", "hello.jar"], 600),
+             ([java.path, "-jar", "hello.jar"], 60)],
+            "hello from Kotlin", d, detail="kotlinc to a runnable jar, ran with java -jar",
+        ))
+    else:
+        results.append(_skipped("hello: Kotlin", "kotlinc or java not available"))
     return results
-
-
-# --------------------------------------------------------------------------- Kotlin
-
-
-def smoke_kotlin(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    kotlinc, java = _find(tools, "kotlinc"), _find(tools, "java (JVM for Kotlin)")
-    if not (_usable(kotlinc) and _usable(java)):
-        return [_skipped("hello: Kotlin", "kotlinc or java not available")]
-    _write(work / "hello.kt", 'fun main() {\n    val who = "Kotlin"\n    println("hello from $who")\n}\n')
-    return [build_and_run(
-        "hello: Kotlin",
-        [([kotlinc.path, "hello.kt", "-include-runtime", "-d", "hello.jar"], 600),
-         ([java.path, "-jar", "hello.jar"], 60)],
-        "hello from Kotlin", work, detail="kotlinc to a runnable jar, ran with java -jar",
-    )]
 
 
 # --------------------------------------------------------------------------- Python
@@ -370,7 +366,6 @@ SMOKE_TESTS: dict[str, Callable[[PlatformInfo, list[ToolResult], Path], list[Too
     "git": smoke_git,
     "bash": smoke_bash,
     "java": smoke_java,
-    "kotlin": smoke_kotlin,
     "go": smoke_go,
     "python": smoke_python,
     "node": smoke_node,

@@ -79,7 +79,7 @@ def latest_release(release_code: str) -> str | None:
 
 
 def check_intellij(p: PlatformInfo) -> ToolResult:
-    """One optional row, shared by the Java + Gradle and Kotlin environments."""
+    """The optional IDE row of the Java / Kotlin + Gradle environment."""
     name = "IntelliJ IDEA (IDE)"
     installs = find_installations(p)
     if not installs:

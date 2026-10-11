@@ -32,7 +32,7 @@ class SelectionTest(unittest.TestCase):
         self.assertLessEqual(set(cli.DEFAULT_FAVORITES), set(ENVIRONMENTS))
 
     def test_favorites_from_the_environment(self):
-        self.assertEqual(parse("--favorites", environ={"DEVENV_CHECK_FAVORITES": "Docker, kotlin"}).only, ["docker", "kotlin"])
+        self.assertEqual(parse("--favorites", environ={"DEVENV_CHECK_FAVORITES": "Docker, java"}).only, ["docker", "java"])
 
     def test_bad_favorites_are_reported(self):
         with mock.patch("sys.stderr"), self.assertRaises(SystemExit):

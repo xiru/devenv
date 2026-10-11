@@ -289,7 +289,7 @@ _LANG_HINTS: dict[str, dict[str, list[str]]] = {
     "windows": {
         "bash": ["winget install --id Git.Git -e   (includes Git Bash)", "# or Linux bash through WSL: wsl --install -d Ubuntu"],
         "shell_tools": ["winget install --id koalaman.shellcheck -e", "winget install --id mvdan.shfmt -e"],
-        "kotlin": ["scoop install kotlin   (or: choco install kotlinc)", "# kotlinc needs a JDK (see Java + Gradle)"],
+        "kotlin": ["scoop install kotlin   (or: choco install kotlinc)", "# kotlinc runs on the JDK (see java above)"],
     },
     "macos": {
         "bash": ["brew install bash   (macOS ships bash 3.2; Homebrew installs bash 5)"],
@@ -299,7 +299,7 @@ _LANG_HINTS: dict[str, dict[str, list[str]]] = {
     "linux": {
         "bash": ["Install bash with your distribution's package manager"],
         "shell_tools": ["Install shellcheck and shfmt with your package manager (shfmt: go install mvdan.cc/sh/v3/cmd/shfmt@latest)"],
-        "kotlin": ["# needs zip/unzip/curl; kotlinc also needs a JDK (see Java + Gradle)", *_SDKMAN_KOTLIN],
+        "kotlin": ["# needs zip/unzip/curl; kotlinc also runs on the JDK (see java above)", *_SDKMAN_KOTLIN],
     },
     "debian": {
         "bash": ["sudo apt update && sudo apt install -y bash"],

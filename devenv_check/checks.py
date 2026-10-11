@@ -276,28 +276,19 @@ def check_java(p: PlatformInfo) -> list[ToolResult]:
         if javac.status is Status.MISSING and java.status is not Status.MISSING:
             javac.detail = "only a JRE was found; a JDK is needed to compile"
 
-    # `gradle --version` starts a JVM and may print a first-run banner: allow it time.
+    # `gradle --version` and `kotlinc -version` start a JVM (gradle may also print a first-run banner): allow them time.
     gradle = probe("gradle", ["gradle", "--version"], pattern=r"Gradle (\d+)\.(\d+)(?:\.(\d+))?", hint="gradle", timeout=120)
+    # Kotlin is optional on top of the JDK, like TypeScript on top of Node.js.
+    kotlinc = probe("kotlinc", ["kotlinc", "-version"], pattern=r"kotlinc-jvm (\d+)\.(\d+)\.(\d+)",
+                    min_version=MIN_VERSIONS["kotlin"], required=False, hint="kotlin", timeout=120)
     detected_home = detect_java_home(java.path) if java.path and java.status is not Status.MISSING else None
-    return [java, javac, check_java_home(detected_home), gradle, check_intellij(p)]
+    return [java, javac, check_java_home(detected_home), gradle, kotlinc, check_intellij(p)]
 
 
 def check_intellij(p: PlatformInfo) -> ToolResult:
     from .jetbrains import check_intellij as check  # imported lazily: jetbrains builds on this module
 
     return check(p)
-
-
-# --------------------------------------------------------------------------- Kotlin
-
-
-def check_kotlin(p: PlatformInfo) -> list[ToolResult]:
-    # kotlinc starts a JVM, so `-version` takes a few seconds.
-    kotlinc = probe("kotlinc", ["kotlinc", "-version"], pattern=r"kotlinc-jvm (\d+)\.(\d+)\.(\d+)",
-                    min_version=MIN_VERSIONS["kotlin"], hint="kotlin", timeout=120)
-    java = probe("java (JVM for Kotlin)", ["java", "-version"],
-                 pattern=r'version "(\d+)(?:\.(\d+))?(?:\.(\d+))?', fix=_java_legacy, hint="java")
-    return [kotlinc, java, check_intellij(p)]
 
 
 # --------------------------------------------------------------------------- Python
@@ -552,8 +543,7 @@ def check_vscode(p: PlatformInfo) -> list[ToolResult]:
 ENVIRONMENTS: dict[str, tuple[str, Callable[[PlatformInfo], list[ToolResult]]]] = {
     "git": ("Git", check_git),
     "bash": ("Bash scripting", check_bash),
-    "java": ("Java + Gradle", check_java),
-    "kotlin": ("Kotlin", check_kotlin),
+    "java": ("Java / Kotlin + Gradle", check_java),
     "go": ("Go", check_go),
     "python": ("Python 3", check_python),
     "node": ("JavaScript / TypeScript (Node.js)", check_node),

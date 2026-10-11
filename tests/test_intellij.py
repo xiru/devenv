@@ -127,11 +127,10 @@ class CheckIntellijTest(unittest.TestCase):
 
 
 class JvmEnvironmentsTest(unittest.TestCase):
-    def test_java_and_kotlin_show_intellij(self):
+    def test_java_shows_intellij(self):
         marker = checks.ToolResult("IntelliJ IDEA (IDE)", Status.OK, required=False)
         with mock.patch.object(jetbrains, "check_intellij", return_value=marker), mock.patch.object(checks, "which", return_value=None):
             self.assertIn(marker, checks.check_java(LINUX))
-            self.assertIn(marker, checks.check_kotlin(LINUX))
 
 
 if __name__ == "__main__":
