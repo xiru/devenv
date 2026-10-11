@@ -8,3 +8,4 @@ venv/
 package.json
 package-lock.json
 .coverage
+.vscode
