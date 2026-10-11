@@ -115,9 +115,10 @@ class CheckJavaTest(unittest.TestCase):
         self.assertNotIn("only a JRE", tools["javac (JDK)"].detail)
         self.assertIs(tools["gradle"].status, Status.MISSING)
 
-    def test_kotlin_is_optional(self):
-        kotlinc = self.check({"java": 'openjdk version "21"', "javac": "javac 21"})["kotlinc"]
-        self.assertEqual((kotlinc.status, kotlinc.required, kotlinc.hint), (Status.MISSING, False, "kotlin"))
+    def test_gradle_and_kotlin_are_optional(self):
+        tools = self.check({"java": 'openjdk version "21"', "javac": "javac 21"})
+        self.assertEqual((tools["gradle"].status, tools["gradle"].required, tools["gradle"].hint), (Status.MISSING, False, "gradle"))
+        self.assertEqual((tools["kotlinc"].status, tools["kotlinc"].required, tools["kotlinc"].hint), (Status.MISSING, False, "kotlin"))
 
     def test_old_kotlin_warns(self):
         self.assertIs(self.check({"kotlinc": "info: kotlinc-jvm 1.9.24 (JRE 17)"})["kotlinc"].status, Status.WARN)

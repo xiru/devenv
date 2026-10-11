@@ -277,8 +277,9 @@ def check_java(p: PlatformInfo) -> list[ToolResult]:
             javac.detail = "only a JRE was found; a JDK is needed to compile"
 
     # `gradle --version` and `kotlinc -version` start a JVM (gradle may also print a first-run banner): allow them time.
-    gradle = probe("gradle", ["gradle", "--version"], pattern=r"Gradle (\d+)\.(\d+)(?:\.(\d+))?", hint="gradle", timeout=120)
-    # Kotlin is optional on top of the JDK, like TypeScript on top of Node.js.
+    # Gradle and Kotlin are optional on top of the JDK, like TypeScript on top of Node.js.
+    gradle = probe("gradle", ["gradle", "--version"], pattern=r"Gradle (\d+)\.(\d+)(?:\.(\d+))?",
+                   required=False, hint="gradle", timeout=120)
     kotlinc = probe("kotlinc", ["kotlinc", "-version"], pattern=r"kotlinc-jvm (\d+)\.(\d+)\.(\d+)",
                     min_version=MIN_VERSIONS["kotlin"], required=False, hint="kotlin", timeout=120)
     detected_home = detect_java_home(java.path) if java.path and java.status is not Status.MISSING else None

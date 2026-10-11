@@ -11,7 +11,7 @@ plus Git and Visual Studio Code:
 |---|---|---|
 | Git | `git` (≥ 2.34) | global `user.name` / `user.email` |
 | Bash scripting | `bash` (≥ 4.0; on Windows Git Bash, falling back to WSL's bash) | `shellcheck`, `shfmt` |
-| Java / Kotlin + Gradle | `java` (≥ 17), `javac` (a JDK, not just a JRE), `gradle` | `JAVA_HOME` set and valid; `kotlinc` (≥ 2.0); IntelliJ IDEA (installed and up to date) |
+| Java / Kotlin + Gradle | `java` (≥ 17), `javac` (a JDK, not just a JRE) | `JAVA_HOME` set and valid; `gradle`; `kotlinc` (≥ 2.0); IntelliJ IDEA (installed and up to date) |
 | Go | `go` (≥ 1.22) | Go bin directory (`GOBIN` / `GOPATH/bin`) on `PATH` |
 | Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
@@ -135,7 +135,7 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Git | `init`, `add`, `commit`, `log` in a temporary repository (your hooks, signing and identity settings are bypassed) |
 | Bash scripting | a `set -euo pipefail` script using a function and an array, linted with `shellcheck` first when installed |
 | Python 3 | creates a `.venv`, runs `pip --version` and a script with the venv's interpreter (no network) |
-| Java / Kotlin + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon`; with `kotlinc`, `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
+| Java / Kotlin + Gradle | `javac` + `java`; with `gradle`, a Gradle `application` project via `gradle run --offline --no-daemon`; with `kotlinc`, `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |
 | JavaScript / TypeScript | `node hello.js`; `hello.ts` run with Node's built-in type stripping (Node ≥ 22.6; skipped on older versions) |
 | C / C++ | compile + run with gcc/g++, clang/clang++, or MSVC (loads `vcvars64.bat` automatically when `cl.exe` isn't on PATH) |
