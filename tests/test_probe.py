@@ -6,7 +6,7 @@ from unittest import mock
 
 from devenv_check import checks
 from devenv_check.checks import Status, ToolResult
-from tests.helpers import fail, fake_system, ok
+from tests.helpers import fail, fake_system
 
 
 class ProbeTest(unittest.TestCase):

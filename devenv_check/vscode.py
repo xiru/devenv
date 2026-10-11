@@ -40,14 +40,7 @@ EXTENSIONS: list[ExtensionSpec] = [
     # Java, Gradle and Kotlin are deliberately absent: IntelliJ IDEA is the recommended IDE for
     # JVM development and is checked in those environments instead (see jetbrains.py).
     ExtensionSpec("Go", ("golang.go",)),
-    ExtensionSpec("Rust", ("rust-lang.rust-analyzer",)),
     ExtensionSpec("Python", ("ms-python.python",), note="includes Pylance and the debugger"),
-    ExtensionSpec("PHP (Intelephense)", ("bmewburn.vscode-intelephense-client",)),
-    ExtensionSpec("PHP debugging (Xdebug)", ("xdebug.php-debug",), required=False),
-    ExtensionSpec("Ruby (Ruby LSP)", ("shopify.ruby-lsp",)),
-    ExtensionSpec("Perl (Perl Navigator)", ("bscan.perlnavigator", "richterger.perl")),
-    ExtensionSpec("Dart", ("dart-code.dart-code",)),
-    ExtensionSpec("Flutter", ("dart-code.flutter",)),
     ExtensionSpec("ESLint (JS/TS)", ("dbaeumer.vscode-eslint",), required=False,
                   note="JavaScript/TypeScript language support is built into VS Code"),
     ExtensionSpec("C/C++", ("ms-vscode.cpptools-extension-pack", "ms-vscode.cpptools")),

@@ -292,61 +292,41 @@ DOCS.update({
     "vscode_update": "https://code.visualstudio.com/updates",
 })
 
-# Bash scripting, Kotlin and Rust, merged into the tables above.
+# Bash scripting and Kotlin, merged into the tables above.
 _SDKMAN_KOTLIN = ['curl -s "https://get.sdkman.io" | bash', 'source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk install kotlin']
-_RUSTUP_UNIX = ["curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y", '. "$HOME/.cargo/env"']
-_RUST_COMPONENTS = ["rustup component add clippy rustfmt"]
 _LANG_HINTS: dict[str, dict[str, list[str]]] = {
     "windows": {
         "bash": ["winget install --id Git.Git -e   (includes Git Bash)", "# or Linux bash through WSL: wsl --install -d Ubuntu"],
         "shell_tools": ["winget install --id koalaman.shellcheck -e", "winget install --id mvdan.shfmt -e"],
         "kotlin": ["scoop install kotlin   (or: choco install kotlinc)", "# kotlinc needs a JDK (see Java + Gradle)"],
-        "rust": [
-            "winget install --id Rustlang.Rustup -e",
-            "rustup default stable",
-            "# the default MSVC toolchain links with the Visual Studio C++ Build Tools (see C / C++)",
-        ],
-        "rustup": ["winget install --id Rustlang.Rustup -e"],
-        "rust_components": _RUST_COMPONENTS,
     },
     "macos": {
         "bash": ["brew install bash   (macOS ships bash 3.2; Homebrew installs bash 5)"],
         "shell_tools": ["brew install shellcheck shfmt"],
         "kotlin": ["brew install kotlin"],
-        "rust": ["xcode-select --install   (provides the linker)", *_RUSTUP_UNIX],
-        "rustup": ["brew install rustup && rustup-init -y"],
-        "rust_components": _RUST_COMPONENTS,
     },
     "linux": {
         "bash": ["Install bash with your distribution's package manager"],
         "shell_tools": ["Install shellcheck and shfmt with your package manager (shfmt: go install mvdan.cc/sh/v3/cmd/shfmt@latest)"],
         "kotlin": ["# needs zip/unzip/curl; kotlinc also needs a JDK (see Java + Gradle)", *_SDKMAN_KOTLIN],
-        "rust": ["# a C linker is required too: install gcc (see C / C++)", *_RUSTUP_UNIX],
-        "rustup": ["# distro Rust packages lag behind; rustup installs and updates official toolchains", *_RUSTUP_UNIX],
-        "rust_components": _RUST_COMPONENTS,
     },
     "debian": {
         "bash": ["sudo apt update && sudo apt install -y bash"],
         "shell_tools": ["sudo apt install -y shellcheck shfmt"],
         "kotlin": ["sudo apt install -y curl zip unzip", *_SDKMAN_KOTLIN, "# or: sudo snap install kotlin --classic"],
-        "rust": ["sudo apt update && sudo apt install -y build-essential curl", *_RUSTUP_UNIX],
     },
     "fedora": {
         "bash": ["sudo dnf install -y bash"],
         "shell_tools": ["sudo dnf install -y ShellCheck shfmt"],
-        "rust": ["sudo dnf install -y gcc curl", *_RUSTUP_UNIX],
     },
     "arch": {
         "bash": ["sudo pacman -S --needed bash"],
         "shell_tools": ["sudo pacman -S --needed shellcheck shfmt"],
         "kotlin": ["sudo pacman -S --needed kotlin"],
-        "rust": ["sudo pacman -S --needed rustup base-devel && rustup default stable"],
-        "rustup": ["sudo pacman -S --needed rustup && rustup default stable"],
     },
     "suse": {
         "bash": ["sudo zypper install -y bash"],
         "shell_tools": ["sudo zypper install -y ShellCheck shfmt"],
-        "rust": ["sudo zypper install -y gcc curl", *_RUSTUP_UNIX],
     },
 }
 for _family, _extra in _LANG_HINTS.items():
@@ -356,72 +336,7 @@ DOCS.update({
     "bash": "https://www.gnu.org/software/bash/",
     "shell_tools": "https://www.shellcheck.net/",
     "kotlin": "https://kotlinlang.org/docs/command-line.html",
-    "rust": "https://www.rust-lang.org/tools/install",
-    "rustup": "https://rust-lang.github.io/rustup/installation/index.html",
-    "rust_components": "https://rust-lang.github.io/rustup/concepts/components.html",
 })
-
-# Dart and Flutter, merged into the tables above.
-_FLUTTER_GIT_UNIX = [
-    "git clone https://github.com/flutter/flutter.git -b stable ~/flutter",
-    "echo 'export PATH=\"$PATH:$HOME/flutter/bin\"' >> ~/.bashrc && source ~/.bashrc",
-    "flutter doctor",
-]
-_FLUTTER_DOCTOR = [
-    "flutter doctor -v   (explains how to fix each item)",
-    "flutter doctor --android-licenses   (accept the Android SDK licenses, if you target Android)",
-]
-_DART_FLUTTER_HINTS: dict[str, dict[str, list[str]]] = {
-    "windows": {
-        "dart": ["winget install --id Google.DartSDK -e", "# or install Flutter, which bundles Dart"],
-        "flutter": [
-            "# Flutter is not in winget; the official git checkout (needs Git):",
-            'git clone https://github.com/flutter/flutter.git -b stable "$env:USERPROFILE\\flutter"',
-            '[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:USERPROFILE\\flutter\\bin", "User")',
-            "# open a new terminal, then: flutter doctor",
-        ],
-        "flutter_doctor": _FLUTTER_DOCTOR,
-    },
-    "macos": {
-        "dart": ["brew tap dart-lang/dart && brew install dart", "# or install Flutter, which bundles Dart"],
-        "flutter": ["brew install --cask flutter", "flutter doctor"],
-        "flutter_doctor": _FLUTTER_DOCTOR,
-    },
-    "linux": {
-        "dart": ["Download the Dart SDK from https://dart.dev/get-dart/archive, or install Flutter (it bundles Dart)"],
-        "flutter": ["# prerequisites: git curl unzip xz-utils zip", *_FLUTTER_GIT_UNIX],
-        "flutter_doctor": _FLUTTER_DOCTOR,
-    },
-    "debian": {
-        "dart": [
-            "sudo apt update && sudo apt install -y apt-transport-https wget gpg",
-            "wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/dart.gpg",
-            "echo 'deb [signed-by=/usr/share/keyrings/dart.gpg arch={arch}] "
-            "https://storage.googleapis.com/download.dartlang.org/linux/debian stable main' | sudo tee /etc/apt/sources.list.d/dart_stable.list",
-            "sudo apt update && sudo apt install -y dart",
-            "# or install Flutter, which bundles Dart",
-        ],
-        "flutter": [
-            "sudo apt update && sudo apt install -y curl git unzip xz-utils zip libglu1-mesa",
-            *_FLUTTER_GIT_UNIX,
-            "# or: sudo snap install flutter --classic",
-            "# Linux desktop targets also need: sudo apt install -y clang cmake ninja-build pkg-config libgtk-3-dev",
-        ],
-    },
-    "arch": {
-        "dart": ["sudo pacman -S --needed dart"],
-    },
-    "wsl": {
-        "flutter": [
-            "# Flutter inside WSL builds web, Linux and Android (via adb) apps; for Windows desktop apps",
-            "# or the Android emulator, install Flutter on Windows as well.",
-            "sudo apt update && sudo apt install -y curl git unzip xz-utils zip libglu1-mesa",
-            *_FLUTTER_GIT_UNIX,
-        ],
-    },
-}
-for _family, _extra in _DART_FLUTTER_HINTS.items():
-    HINTS.setdefault(_family, {}).update(_extra)
 
 # IntelliJ IDEA: the recommended IDE for Java and Kotlin (VS Code is not suggested for JVM work).
 _TOOLBOX = "# or JetBrains Toolbox, which installs and updates all JetBrains IDEs: https://www.jetbrains.com/toolbox-app/"
@@ -501,126 +416,12 @@ _PYTHON_HINTS: dict[str, dict[str, list[str]]] = {
 for _family, _extra in _PYTHON_HINTS.items():
     HINTS.setdefault(_family, {}).update(_extra)
 
-# PHP + Composer and Ruby + Bundler.
-_COMPOSER_INSTALLER = [
-    "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\"",
-    "php composer-setup.php --install-dir=$HOME/.local/bin --filename=composer && rm composer-setup.php",
-]
-_GEM_BUNDLER = ["gem install bundler   (add --user-install for a system Ruby)"]
-_PHP_RUBY_HINTS: dict[str, dict[str, list[str]]] = {
-    "windows": {
-        "php": ["winget install --id PHP.PHP.8.5 -e"],
-        "composer": [
-            "# Composer is not in winget: run the official installer (it finds php and updates PATH)",
-            "https://getcomposer.org/Composer-Setup.exe   (or: scoop install composer)",
-        ],
-        "ruby": ["winget install --id RubyInstallerTeam.RubyWithDevKit.4.0 -e", "ridk install   (then choose the MSYS2 development toolchain)"],
-        "bundler": _GEM_BUNDLER,
-        "ridk": ["ridk install   (choose: MSYS2 and MINGW development toolchain)"],
-    },
-    "macos": {
-        "php": ["brew install php"],
-        "composer": ["brew install composer"],
-        "ruby": ["brew install ruby",
-                 "echo 'export PATH=\"$(brew --prefix ruby)/bin:$PATH\"' >> ~/.zshrc   (Homebrew Ruby is keg-only)"],
-        "bundler": _GEM_BUNDLER,
-    },
-    "linux": {
-        "php": ["Install the PHP CLI (php-cli, plus php-xml, php-mbstring, php-curl, php-zip) with your package manager"],
-        "composer": _COMPOSER_INSTALLER,
-        "ruby": ["Install ruby (with its -dev/-devel headers) with your package manager, or use rbenv: https://github.com/rbenv/rbenv"],
-        "bundler": _GEM_BUNDLER,
-    },
-    "debian": {
-        "php": ["sudo apt update && sudo apt install -y php-cli php-xml php-mbstring php-curl php-zip unzip"],
-        "composer": ["sudo apt install -y composer   (or the official installer for the newest release)"],
-        "ruby": ["sudo apt update && sudo apt install -y ruby-full build-essential"],
-        "bundler": ["sudo apt install -y ruby-bundler"],
-    },
-    "fedora": {
-        "php": ["sudo dnf install -y php-cli php-xml php-mbstring php-zip"],
-        "composer": ["sudo dnf install -y composer"],
-        "ruby": ["sudo dnf install -y ruby ruby-devel gcc make"],
-        "bundler": ["sudo dnf install -y rubygem-bundler"],
-    },
-    "arch": {
-        "php": ["sudo pacman -S --needed php"],
-        "composer": ["sudo pacman -S --needed composer"],
-        "ruby": ["sudo pacman -S --needed ruby base-devel"],
-        "bundler": ["sudo pacman -S --needed ruby-bundler"],
-    },
-    "suse": {
-        "php": ["sudo zypper install -y php8 php8-cli php8-mbstring php8-zip"],
-        "ruby": ["sudo zypper install -y ruby ruby-devel gcc make"],
-    },
-}
-for _family, _extra in _PHP_RUBY_HINTS.items():
-    HINTS.setdefault(_family, {}).update(_extra)
-
-# Perl, the CPAN module installer and cpanminus.
-_CPANM_BOOTSTRAP = ["curl -L https://cpanmin.us | perl - --sudo App::cpanminus"]
-_PERL_HINTS: dict[str, dict[str, list[str]]] = {
-    "windows": {
-        "perl": ["winget install --id StrawberryPerl.StrawberryPerl -e   (includes cpan, cpanm and a C compiler)"],
-        "cpan": ["Reinstall Strawberry Perl, which bundles CPAN"],
-        "cpanm": ["cpan App::cpanminus   (Strawberry Perl already ships cpanm)"],
-    },
-    "macos": {
-        "perl": ["brew install perl   (the macOS system perl is deprecated)"],
-        "cpan": ["brew reinstall perl"],
-        "cpanm": ["brew install cpanminus"],
-    },
-    "linux": {
-        "perl": ["Install perl with your distribution's package manager"],
-        "cpan": ["Install your distribution's CPAN package (e.g. perl-CPAN)"],
-        "cpanm": _CPANM_BOOTSTRAP,
-    },
-    "debian": {
-        "perl": ["sudo apt update && sudo apt install -y perl build-essential"],
-        "cpan": ["sudo apt install -y perl   (CPAN ships in perl-modules)"],
-        "cpanm": ["sudo apt install -y cpanminus"],
-    },
-    "fedora": {
-        "perl": ["sudo dnf install -y perl perl-CPAN gcc make"],
-        "cpan": ["sudo dnf install -y perl-CPAN"],
-        "cpanm": ["sudo dnf install -y perl-App-cpanminus"],
-    },
-    "arch": {
-        "perl": ["sudo pacman -S --needed perl base-devel"],
-        "cpan": ["sudo pacman -S --needed perl   (CPAN is part of the perl package)"],
-        "cpanm": ["sudo pacman -S --needed cpanminus"],
-    },
-    "suse": {
-        "perl": ["sudo zypper install -y perl gcc make"],
-        "cpanm": ["sudo zypper install -y perl-App-cpanminus"],
-    },
-}
-for _family, _extra in _PERL_HINTS.items():
-    HINTS.setdefault(_family, {}).update(_extra)
-
 DOCS.update({
-    "perl": "https://www.perl.org/get.html",
-    "cpan": "https://www.cpan.org/modules/INSTALL.html",
-    "cpanm": "https://metacpan.org/pod/App::cpanminus",
-})
-
-# Hint keys that only exist on some systems (the matching check never runs elsewhere).
-PLATFORM_ONLY: dict[str, set[str]] = {"ridk": {"windows"}}
-
-DOCS.update({
-    "dart": "https://dart.dev/get-dart",
-    "flutter": "https://docs.flutter.dev/get-started/install",
-    "flutter_doctor": "https://docs.flutter.dev/get-started/install",
     "intellij": "https://www.jetbrains.com/idea/download/",
     "intellij_update": "https://www.jetbrains.com/help/idea/update.html",
     "python": "https://www.python.org/downloads/",
     "pip": "https://pip.pypa.io/en/stable/installation/",
     "venv": "https://docs.python.org/3/library/venv.html",
-    "php": "https://www.php.net/manual/en/install.php",
-    "composer": "https://getcomposer.org/download/",
-    "ruby": "https://www.ruby-lang.org/en/documentation/installation/",
-    "bundler": "https://bundler.io/",
-    "ridk": "https://github.com/oneclick/rubyinstaller2/wiki/The-ridk-tool",
 })
 
 PACKAGE_MANAGER_LABEL = {

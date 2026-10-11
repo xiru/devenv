@@ -58,23 +58,23 @@ class InstalledExtensionsTest(TempDirMixin, unittest.TestCase):
         (self.tmp / "extensions.json").write_text(json.dumps([
             manifest_entry("golang.Go", "0.55.0"),
             manifest_entry("golang.go", "0.56.1"),
-            manifest_entry("rust-lang.rust-analyzer", "0.4.3078", prerelease=True),
+            manifest_entry("ms-dotnettools.csharp", "2.161.1", prerelease=True),
             {"identifier": {}},  # broken entries are ignored
             "junk",
         ]))
         found = vscode.installed_extensions(self.tmp)
         self.assertEqual(found["golang.go"].version, "0.56.1")  # newest wins, ids are case-insensitive
-        self.assertTrue(found["rust-lang.rust-analyzer"].prerelease)
+        self.assertTrue(found["ms-dotnettools.csharp"].prerelease)
         self.assertEqual(len(found), 2)
 
     def test_falls_back_to_folder_names(self):
-        for name in ("ms-vscode.cpptools-1.34.4-win32-x64", "rust-lang.rust-analyzer-0.3.3073-win32-x64",
+        for name in ("ms-vscode.cpptools-1.34.4-win32-x64", "ms-dotnettools.csharp-2.160.4-win32-x64",
                      "golang.go-0.56.1", "golang.go-0.55.0", ".obsolete"):
             (self.tmp / name).mkdir()
         (self.tmp / "ms-python.python-2025.1.0").touch()  # files are not extensions
         found = vscode.installed_extensions(self.tmp)
         self.assertEqual(found["ms-vscode.cpptools"].version, "1.34.4")
-        self.assertEqual(found["rust-lang.rust-analyzer"].version, "0.3.3073")
+        self.assertEqual(found["ms-dotnettools.csharp"].version, "2.160.4")
         self.assertEqual(found["golang.go"].version, "0.56.1")
         self.assertNotIn("ms-python.python", found)
 
@@ -184,8 +184,8 @@ class ExtensionCheckTest(unittest.TestCase):
         self.assertEqual(results["ext: Go"].fix, ["code --install-extension golang.go --force"])
         self.assertIs(results["ext: C#"].status, Status.OK)  # a stable install isn't compared with pre-releases
         self.assertEqual(results["ext: C#"].provider, "ms-dotnettools.csharp")  # the alternative id is accepted
-        self.assertIs(results["ext: Rust"].status, Status.MISSING)
-        self.assertEqual(results["ext: Rust"].fix, ["code --install-extension rust-lang.rust-analyzer"])
+        self.assertIs(results["ext: Python"].status, Status.MISSING)
+        self.assertEqual(results["ext: Python"].fix, ["code --install-extension ms-python.python"])
         self.assertFalse({"ext: Java", "ext: Gradle", "ext: Kotlin"} & results.keys())  # JVM work uses IntelliJ IDEA
         self.assertFalse(results["ext: ESLint (JS/TS)"].required)
         self.assertIn("built into VS Code", results["ext: ESLint (JS/TS)"].detail)

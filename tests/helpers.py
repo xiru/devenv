@@ -39,7 +39,7 @@ def fail(stderr: str = "", stdout: str = "", returncode: int = 1) -> CommandResu
 
 
 def tool_name(arg: str) -> str:
-    """'C:\\bin\\php.exe' or '/usr/bin/php' -> 'php'."""
+    """'C:\\bin\\go.exe' or '/usr/bin/go' -> 'go'."""
     return Path(arg.replace("\\", "/")).stem if arg.lower().endswith(".exe") else Path(arg.replace("\\", "/")).name
 
 

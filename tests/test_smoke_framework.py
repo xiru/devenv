@@ -87,7 +87,7 @@ class HelpersTest(unittest.TestCase):
     def test_find(self):
         tools = [ToolResult("go", Status.OK), ToolResult("gofmt", Status.OK)]
         self.assertIs(smoke._find(tools, "gofmt"), tools[1])
-        self.assertIsNone(smoke._find(tools, "rust"))
+        self.assertIsNone(smoke._find(tools, "node"))
 
     def test_skipped(self):
         result = smoke._skipped("hello: Go", "go not available")

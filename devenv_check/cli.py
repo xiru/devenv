@@ -35,7 +35,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="devenv_check",
         description="Check whether this computer is ready to develop, test and run "
-        "Bash, Java/Kotlin/Gradle, Go, Rust, Dart/Flutter, Python, PHP, Ruby, Perl, Node/TypeScript, C/C++, C#/.NET, "
+        "Bash, Java/Kotlin/Gradle, Go, Python, Node/TypeScript, C/C++, C#/.NET, "
         "Docker and Kubernetes projects, with Git and Visual Studio Code.",
     )
     selection = parser.add_mutually_exclusive_group()

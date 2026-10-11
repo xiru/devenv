@@ -187,53 +187,6 @@ def smoke_kotlin(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[T
     )]
 
 
-# --------------------------------------------------------------------------- Rust
-
-
-def smoke_rust(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    cargo = _find(tools, "cargo")
-    if not _usable(cargo):
-        return [_skipped("hello: Rust (cargo)", "cargo not available")]
-    _write(work / "Cargo.toml", '[package]\nname = "hello"\nversion = "0.1.0"\nedition = "2021"\n\n[dependencies]\n')
-    _write(work / "src" / "main.rs", 'fn main() {\n    let who = "Rust";\n    println!("hello from {who}");\n}\n')
-    binary = work / "target" / "debug" / f"hello{EXE}"
-    return [build_and_run(
-        "hello: Rust (cargo)",
-        [([cargo.path, "build", "--offline", "--quiet"], 600), ([str(binary)], 30)],
-        "hello from Rust", work, env={"CARGO_TERM_COLOR": "never"}, detail="cargo build + run",
-    )]
-
-
-# --------------------------------------------------------------------------- Dart + Flutter
-
-
-def smoke_dart(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    dart = _find(tools, "dart")
-    if not _usable(dart):
-        return [_skipped("hello: Dart", "dart not available")]
-    _write(work / "hello.dart", "void main() {\n  final who = 'Dart';\n  print('hello from $who');\n}\n")
-    binary = work / f"hello{EXE}"
-    return [build_and_run(
-        "hello: Dart",
-        [([dart.path, "compile", "exe", "hello.dart", "-o", binary.name], 300), ([str(binary)], 30)],
-        "hello from Dart", work, detail="dart compile exe (native AOT) + run",
-    )]
-
-
-def smoke_flutter(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    flutter = _find(tools, "flutter")
-    if not _usable(flutter):
-        return [_skipped("hello: Flutter app test", "flutter not available")]
-    # The template app ships a widget test (counter increments), which runs headless: no device needed.
-    # `flutter test` resolves packages from the pub cache, downloading them on a first run.
-    return [build_and_run(
-        "hello: Flutter app test",
-        [([flutter.path, "create", "--no-pub", "--project-name", "hello_devenv", "."], 600),
-         ([flutter.path, "test", "--reporter=compact"], 900)],
-        "All tests passed!", work, detail="flutter create + flutter test (template widget test)",
-    )]
-
-
 # --------------------------------------------------------------------------- Python
 
 
@@ -250,76 +203,6 @@ def smoke_python(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[T
          ([str(venv_python), "-m", "pip", "--version"], 60),
          ([str(venv_python), "hello.py"], 30)],
         "hello from Python 3", work, detail="created a venv, ran pip and the script inside it",
-    )]
-
-
-# --------------------------------------------------------------------------- PHP
-
-
-def smoke_php(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    php, composer = _find(tools, "php"), _find(tools, "composer")
-    if not _usable(php):
-        return [_skipped("hello: PHP + Composer autoload", "php not available")]
-    _write(work / "src" / "Greeter.php",
-           "<?php\n\nnamespace Hello;\n\nfinal class Greeter\n{\n"
-           "    public function greet(string $who): string\n    {\n        return \"hello from {$who}\";\n    }\n}\n")
-    if not _usable(composer):
-        _write(work / "hello.php", "<?php\nrequire __DIR__ . '/src/Greeter.php';\necho (new Hello\\Greeter())->greet('PHP'), PHP_EOL;\n")
-        return [build_and_run("hello: PHP", [([php.path, "hello.php"], 30)], "hello from PHP", work,
-                              detail="ran with php (composer not available)")]
-    # Composer generates a PSR-4 autoloader without any network access (no dependencies).
-    _write(work / "composer.json", '{\n    "name": "devenv/hello",\n    "autoload": {"psr-4": {"Hello\\\\": "src/"}}\n}\n')
-    _write(work / "hello.php", "<?php\nrequire __DIR__ . '/vendor/autoload.php';\necho (new Hello\\Greeter())->greet('PHP'), PHP_EOL;\n")
-    return [build_and_run(
-        "hello: PHP + Composer autoload",
-        [([composer.path, "dump-autoload", "--no-interaction", "--no-ansi", "--quiet"], 120), ([php.path, "hello.php"], 30)],
-        "hello from PHP", work, env={"COMPOSER_NO_INTERACTION": "1"},
-        detail="composer dump-autoload (PSR-4) + php",
-    )]
-
-
-# --------------------------------------------------------------------------- Ruby
-
-
-def smoke_ruby(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    ruby, bundler = _find(tools, "ruby"), _find(tools, "bundler")
-    if not _usable(ruby):
-        return [_skipped("hello: Ruby + Bundler", "ruby not available")]
-    _write(work / "hello.rb", "class Greeter\n  def greet(who)\n    \"hello from #{who}\"\n  end\nend\n\nputs Greeter.new.greet(\"Ruby\")\n")
-    if not _usable(bundler):
-        return [build_and_run("hello: Ruby", [([ruby.path, "hello.rb"], 30)], "hello from Ruby", work,
-                              detail="ran with ruby (bundler not available)")]
-    # An empty Gemfile resolves with --local (no network) and still exercises bundle install/exec.
-    _write(work / "Gemfile", 'source "https://rubygems.org"\n')
-    env = {"BUNDLE_GEMFILE": str(work / "Gemfile"), "BUNDLE_APP_CONFIG": str(work / ".bundle")}
-    return [build_and_run(
-        "hello: Ruby + Bundler",
-        [([bundler.path, "install", "--local", "--quiet"], 180), ([bundler.path, "exec", "ruby", "hello.rb"], 60)],
-        "hello from Ruby", work, env=env, detail="bundle install --local + bundle exec ruby",
-    )]
-
-
-# --------------------------------------------------------------------------- Perl
-
-PERL_SCRIPT = """use strict;
-use warnings;
-use List::Util qw(sum);
-
-my %greeting = (who => 'Perl', parts => [1, 2, 3]);
-die "core modules broken\\n" unless sum(@{ $greeting{parts} }) == 6;
-print "hello from $greeting{who}\\n";
-"""
-
-
-def smoke_perl(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
-    perl = _find(tools, "perl")
-    if not _usable(perl):
-        return [_skipped("hello: Perl", "perl not available")]
-    _write(work / "hello.pl", PERL_SCRIPT)
-    return [build_and_run(
-        "hello: Perl",
-        [([perl.path, "-c", "hello.pl"], 30), ([perl.path, "hello.pl"], 30)],
-        "hello from Perl", work, detail="syntax check (perl -c) + run with strict, warnings and a core module",
     )]
 
 
@@ -489,13 +372,7 @@ SMOKE_TESTS: dict[str, Callable[[PlatformInfo, list[ToolResult], Path], list[Too
     "java": smoke_java,
     "kotlin": smoke_kotlin,
     "go": smoke_go,
-    "rust": smoke_rust,
-    "dart": smoke_dart,
-    "flutter": smoke_flutter,
     "python": smoke_python,
-    "php": smoke_php,
-    "ruby": smoke_ruby,
-    "perl": smoke_perl,
     "node": smoke_node,
     "cpp": smoke_cpp,
     "dotnet": smoke_dotnet,

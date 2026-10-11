@@ -3,8 +3,8 @@
 An opinionated development environment checker.
 
 Checks whether the current computer has the global tooling needed to develop,
-test and run applications in Bash, Java/Kotlin (with Gradle), Go, Rust,
-Dart/Flutter, Python 3, PHP, Ruby, Perl, JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes —
+test and run applications in Bash, Java/Kotlin (with Gradle), Go, Python 3,
+JavaScript/TypeScript, C/C++, C#, Docker and Kubernetes —
 plus Git and Visual Studio Code:
 
 | Environment | Required | Optional (reported as *partial* when missing) |
@@ -14,13 +14,7 @@ plus Git and Visual Studio Code:
 | Java + Gradle | `java` (≥ 17), `javac` (a JDK, not just a JRE), `gradle` | `JAVA_HOME` set and valid; IntelliJ IDEA (installed and up to date) |
 | Kotlin | `kotlinc` (≥ 2.0) and a `java` to run it (Gradle is checked under Java + Gradle) | IntelliJ IDEA (installed and up to date) |
 | Go | `go` (≥ 1.22) | Go bin directory (`GOBIN` / `GOPATH/bin`) on `PATH` |
-| Rust | `rustc` (≥ 1.80), `cargo`, a working linker (MSVC Build Tools on Windows, `cc` elsewhere) | `rustup`, `clippy`, `rustfmt` |
-| Dart | `dart` (≥ 3.0; the copy bundled with Flutter counts) | |
-| Flutter | `flutter` (≥ 3.22, read from `flutter --version --machine`) | every `flutter doctor` item (Android toolchain, Chrome, Visual Studio, Xcode, Linux toolchain, connected devices, …) as its own row |
 | Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | |
-| PHP + Composer | `php` (≥ 8.2), `composer` | |
-| Ruby + Bundler | `ruby` (≥ 3.2; macOS's deprecated system Ruby is flagged), `gem`, `bundle` | `ridk` (RubyInstaller's MSYS2 devkit for native gems, Windows only) |
-| Perl | `perl` (≥ 5.32), the CPAN module installer (checked by loading `CPAN.pm`, so `cpan`'s interactive first-run setup never starts) | `cpanm` |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
@@ -45,13 +39,7 @@ is a recommendation (*partial*), not a failure, and comes with install/update in
 |---|---|
 | Bash | `mads-hartmann.bash-ide-vscode` (or `timonwong.shellcheck`) optional |
 | Go | `golang.go` |
-| Rust | `rust-lang.rust-analyzer` |
 | Python | `ms-python.python` (includes Pylance and the debugger) |
-| PHP | `bmewburn.vscode-intelephense-client`; `xdebug.php-debug` optional |
-| Ruby | `shopify.ruby-lsp` |
-| Perl | `bscan.perlnavigator` (or `richterger.perl`) |
-| Dart | `dart-code.dart-code` |
-| Flutter | `dart-code.flutter` |
 | JavaScript / TypeScript | built into VS Code; `dbaeumer.vscode-eslint` optional |
 | C / C++ | `ms-vscode.cpptools-extension-pack` (or `ms-vscode.cpptools`); `ms-vscode.cmake-tools` optional |
 | C# | `ms-dotnettools.csdevkit` (or `ms-dotnettools.csharp`) |
@@ -109,9 +97,8 @@ Options:
                    default; set DEVENV_CHECK_FAVORITES=env1,env2 to choose others (not
                    combinable with --only)
 --deep             also build and run a hello world program in every environment
---only java,go     check a subset: git, bash, java, kotlin, go, rust, dart, flutter,
-                   python, php, ruby, perl, node, cpp, dotnet, docker, kubernetes,
-                   vscode
+--only java,go     check a subset: git, bash, java, kotlin, go, python, node, cpp,
+                   dotnet, docker, kubernetes, vscode
 --offline          skip VS Code / extension / IntelliJ IDEA update checks (no network access)
 --json             machine readable output (includes the fix commands)
 -v, --verbose      show where each tool was found
@@ -149,13 +136,7 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Git | `init`, `add`, `commit`, `log` in a temporary repository (your hooks, signing and identity settings are bypassed) |
 | Bash scripting | a `set -euo pipefail` script using a function and an array, linted with `shellcheck` first when installed |
 | Kotlin | `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
-| Rust | `cargo build --offline` of a minimal crate, then the binary is run (proves the linker works too) |
-| Dart | `dart compile exe` (native AOT executable), then the executable is run |
 | Python 3 | creates a `.venv`, runs `pip --version` and a script with the venv's interpreter (no network) |
-| PHP + Composer | `composer dump-autoload` generates a PSR-4 autoloader for a small class, then `php` runs a script through `vendor/autoload.php` (no network; plain `php` if Composer is missing) |
-| Perl | `perl -c` syntax check, then a `use strict; use warnings;` script using a core module (`List::Util`) |
-| Ruby + Bundler | `bundle install --local` with an empty Gemfile, then `bundle exec ruby` runs a script (no network; plain `ruby` if Bundler is missing) |
-| Flutter | `flutter create` of the template app, then `flutter test` runs its widget test headless — no device or emulator needed. The first run downloads the template's packages into the pub cache |
 | Java + Gradle | `javac` + `java`; a Gradle `application` project via `gradle run --offline --no-daemon` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |
 | JavaScript / TypeScript | `node hello.js`; `hello.ts` run with Node's built-in type stripping (Node ≥ 22.6; skipped on older versions) |
@@ -197,7 +178,5 @@ The suite needs no tools installed: every check reaches the system only through 
   aggregation, running checks), `test_install_hints.py`, `test_report.py`, `test_cli.py` and
   `test_smoke_framework.py` (the machinery behind `--deep`).
 - **One file per environment**: `test_git.py`, `test_bash.py`, `test_java.py`, `test_kotlin.py`,
-  `test_go.py`, `test_rust.py`, `test_dart.py`, `test_flutter.py`, `test_python.py`,
-  `test_php.py`, `test_ruby.py`, `test_perl.py`, `test_node.py`, `test_cpp.py`, `test_dotnet.py`,
-  `test_docker.py`, `test_kubernetes.py`, `test_vscode.py` and `test_intellij.py`. Each holds
-  that environment's installation check, its hello world test and its install hints.
+  `test_go.py`, `test_python.py`, `test_node.py`, `test_cpp.py`, `test_dotnet.py`, `test_docker.py`,
+  `test_kubernetes.py`, `test_vscode.py` and `test_intellij.py`. Each holds that environment's installation check, its hello world test and its install hints.

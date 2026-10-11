@@ -12,11 +12,6 @@ from devenv_check.platform_info import PlatformInfo
 from tests.helpers import FAMILIES, LINUX, MACOS, WINDOWS, WSL, platform_for
 
 
-def hint_keys(family: str = "linux") -> set[str]:
-    """Every hint key that applies to `family` (some keys are platform-specific)."""
-    return {key for key in install_hints.DOCS if family in install_hints.PLATFORM_ONLY.get(key, {family})}
-
-
 def installed(*names):
     """Patch install_hints.which so only `names` are on PATH."""
     return mock.patch.object(install_hints, "which", side_effect=lambda n: f"/bin/{n}" if n in names else None)
@@ -25,20 +20,14 @@ def installed(*names):
 class CoverageTest(unittest.TestCase):
     def test_every_key_has_a_hint_on_every_family(self):
         for family in FAMILIES:
-            for key in hint_keys(family):
+            for key in install_hints.DOCS:
                 with self.subTest(family=family, key=key):
                     self.assertTrue(hint_for(key, platform_for(family)))
 
     def test_every_key_has_a_hint_under_wsl(self):
-        for key in hint_keys():
+        for key in install_hints.DOCS:
             with self.subTest(key=key):
                 self.assertTrue(hint_for(key, WSL))
-
-    def test_platform_only_keys_are_covered_where_they_apply(self):
-        for key, families in install_hints.PLATFORM_ONLY.items():
-            for family in families:
-                with self.subTest(key=key, family=family):
-                    self.assertTrue(hint_for(key, platform_for(family)))
 
     def test_every_hint_used_by_a_table_has_docs(self):
         for family, table in install_hints.HINTS.items():
@@ -109,7 +98,7 @@ class ScoopOrChocoTest(unittest.TestCase):
 
     def test_lines_without_the_choice_are_untouched(self):
         with installed("winget", "choco"):
-            self.assertEqual(hint_for("composer", WINDOWS), install_hints.HINTS["windows"]["composer"])
+            self.assertEqual(hint_for("go", WINDOWS), install_hints.HINTS["windows"]["go"])
 
     def test_other_platforms_untouched(self):
         self.assertFalse(install_hints.needs_scoop_or_choco("gradle", MACOS))

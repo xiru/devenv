@@ -140,8 +140,8 @@ class SummaryAndFixesTest(unittest.TestCase):
             EnvResult("go", "Go", [ToolResult("go", Status.OK)]),
             EnvResult("node", "Node", [ToolResult("node", Status.MISSING, hint="node"),
                                        ToolResult("npm", Status.MISSING, hint="node")]),
-            EnvResult("rust", "Rust", [ToolResult("rust", Status.OK), ToolResult("clippy", Status.WARN, required=False,
-                                                                                 hint="rust_components")]),
+            EnvResult("bash", "Bash", [ToolResult("bash", Status.OK), ToolResult("shfmt", Status.WARN, required=False,
+                                                                                 hint="shell_tools")]),
             EnvResult("vscode", "VS Code", [ToolResult("ext: Go", Status.MISSING, required=False,
                                                        fix=["code --install-extension golang.go", "# a comment"])]),
         ]
@@ -157,7 +157,7 @@ class SummaryAndFixesTest(unittest.TestCase):
         self.assertIn("    node, npm\n", output)
         self.assertIn("      " + report.hint_for("node", LINUX)[0], output)
         self.assertIn("      docs: " + report.DOCS["node"], output)
-        self.assertIn("clippy (optional)", output)
+        self.assertIn("shfmt (optional)", output)
         self.assertIn("ext: Go (optional)", output)
         self.assertIn("      code --install-extension golang.go", output)
         self.assertIn("Open a new terminal after installing", output)
@@ -166,7 +166,7 @@ class SummaryAndFixesTest(unittest.TestCase):
     def test_prerequisite_notes_get_the_pending_hint_keys(self):
         with mock.patch.object(report, "prerequisite_notes", return_value=[]) as notes:
             text(self.results())
-        self.assertEqual(notes.call_args.args, (LINUX, ["node", "rust_components"]))
+        self.assertEqual(notes.call_args.args, (LINUX, ["node", "shell_tools"]))
 
     def test_no_hints(self):
         self.assertNotIn("How to fix", text(self.results(), hints=False))

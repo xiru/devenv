@@ -26,13 +26,7 @@ MIN_VERSIONS: dict[str, tuple[int, ...]] = {
     "bash": (4, 0),
     "java": (17,),
     "kotlin": (2, 0),
-    "rust": (1, 80),
-    "dart": (3, 0),
-    "flutter": (3, 22),
     "python": (3, 11),
-    "php": (8, 2),
-    "ruby": (3, 2),
-    "perl": (5, 32),
     "go": (1, 22),
     "node": (22,),
     "dotnet": (8,),
@@ -306,113 +300,6 @@ def check_kotlin(p: PlatformInfo) -> list[ToolResult]:
     return [kotlinc, java, check_intellij(p)]
 
 
-# --------------------------------------------------------------------------- Rust
-
-
-def check_rust_linker(p: PlatformInfo, rustc: str) -> ToolResult:
-    """rustc links through the platform's C toolchain; without it every build fails."""
-    name = "linker"
-    host = re.search(r"^host:\s*(\S+)", run([rustc, "-vV"]).stdout, re.MULTILINE)
-    host = host.group(1) if host else ""
-    if p.system == "windows" and host.endswith("msvc"):
-        msvc = probe_msvc()
-        if msvc.status is Status.OK:
-            return ToolResult(name, Status.OK, version=msvc.version, detail=f"MSVC link.exe ({host})")
-        return ToolResult(name, Status.MISSING, hint="cpp",
-                          detail=f"{host} needs the Visual Studio C++ Build Tools (link.exe)")
-    if p.system == "macos" and not run(["xcode-select", "-p"]).ok:
-        return ToolResult(name, Status.MISSING, hint="cpp", detail="Xcode Command Line Tools not installed")
-    linker = which("gcc" if p.system == "windows" else "cc")
-    if linker:
-        return ToolResult(name, Status.OK, path=linker, detail=f"{Path(linker).name} ({host or 'unknown host'})")
-    return ToolResult(name, Status.MISSING, hint="cpp", detail="no C linker (cc) found; Rust needs one to link programs")
-
-
-def check_rust(p: PlatformInfo) -> list[ToolResult]:
-    rustc = probe("rustc", ["rustc", "--version"], pattern=r"rustc (\d+)\.(\d+)\.(\d+)",
-                  min_version=MIN_VERSIONS["rust"], hint="rust")
-    cargo = probe("cargo", ["cargo", "--version"], pattern=r"cargo (\d+)\.(\d+)\.(\d+)", hint="rust")
-    rustup = probe("rustup", ["rustup", "--version"], pattern=r"rustup (\d+)\.(\d+)\.(\d+)", required=False, hint="rustup")
-    if rustup.status is Status.MISSING and rustc.status is not Status.MISSING:
-        rustup.detail = "Rust is installed without rustup (distro package?); rustup keeps toolchains current"
-    tools = [rustc, cargo, rustup]
-    if rustc.path and rustc.status is not Status.MISSING:
-        tools.append(check_rust_linker(p, rustc.path))
-    if cargo.path and cargo.status is not Status.MISSING:
-        tools.append(probe("clippy (linter)", ["cargo", "clippy", "--version"], required=False, hint="rust_components"))
-        tools.append(probe("rustfmt (formatter)", ["cargo", "fmt", "--version"], required=False, hint="rust_components"))
-    return tools
-
-
-# --------------------------------------------------------------------------- Dart + Flutter
-
-
-def check_dart(p: PlatformInfo) -> list[ToolResult]:
-    dart = probe("dart", ["dart", "--version"], pattern=r"Dart SDK version: (\d+)\.(\d+)\.(\d+)",
-                 min_version=MIN_VERSIONS["dart"], hint="dart", timeout=60)
-    if dart.path and dart.status is Status.OK and "flutter" in dart.path.lower():
-        dart.detail = "bundled with Flutter"
-    return [dart]
-
-
-def flutter_version(output: str) -> dict:
-    """Parse `flutter --version --machine`; first runs may print banners before the JSON."""
-    start, end = output.find("{"), output.rfind("}")
-    if start < 0 or end < start:
-        return {}
-    try:
-        return json.loads(output[start:end + 1])
-    except json.JSONDecodeError:
-        return {}
-
-
-# `flutter doctor` marks each validator with ✓/√ (ok), ! (partial) or ✗/X (missing).
-_DOCTOR_LINE = re.compile(r"^\[(?P<mark>[^\]]{1,2})\]\s+(?P<name>[^(\n]+?)\s*(?:\((?P<info>.*)\))?\s*$")
-_DOCTOR_STATUS = {"✓": Status.OK, "√": Status.OK, "!": Status.WARN, "✗": Status.MISSING, "X": Status.MISSING,
-                  "x": Status.MISSING, "☠": Status.MISSING}
-
-
-def parse_flutter_doctor(output: str) -> list[ToolResult]:
-    results = []
-    for line in output.splitlines():
-        match = _DOCTOR_LINE.match(line.strip())
-        if not match:
-            continue
-        name = match["name"].strip()
-        if name.lower().startswith("flutter"):  # the SDK itself is reported by the main row
-            continue
-        name = re.split(r"\s+-\s+", name)[0]  # "Android toolchain - develop for Android devices"
-        status = _DOCTOR_STATUS.get(match["mark"].strip(), Status.WARN)
-        results.append(ToolResult(f"doctor: {name}", status, detail=(match["info"] or "").strip(),
-                                  required=False, hint=None if status is Status.OK else "flutter_doctor"))
-    return results
-
-
-def check_flutter(p: PlatformInfo) -> list[ToolResult]:
-    name = "flutter"
-    path = which("flutter")
-    if path is None:
-        return [ToolResult(name, Status.MISSING, detail="'flutter' not found in PATH", hint="flutter")]
-    # A fresh Flutter checkout downloads its Dart SDK on first run, so allow plenty of time.
-    res = run([path, "--version", "--machine"], timeout=600)
-    info = flutter_version(res.stdout)
-    version = parse_version(info.get("frameworkVersion", ""), r"(\d+)\.(\d+)\.(\d+)")
-    if not version:
-        return [ToolResult(name, Status.MISSING, path=path, hint="flutter",
-                           detail=f"found but not working: {first_line(res.output) or 'no output'}")]
-    flutter = ToolResult(name, Status.OK, version=format_version(version), path=path, hint="flutter",
-                         detail=f"channel {info.get('channel', '?')}, Dart {info.get('dartSdkVersion', '?')}")
-    if version < MIN_VERSIONS["flutter"]:
-        flutter.status = Status.WARN
-        flutter.detail += f"; older than recommended {format_version(MIN_VERSIONS['flutter'])}"
-    doctor = run([path, "doctor"], timeout=300)
-    validators = parse_flutter_doctor(doctor.output)
-    if not validators:
-        validators = [ToolResult("doctor", Status.WARN, required=False, hint="flutter_doctor",
-                                 detail=f"could not read 'flutter doctor' output: {first_line(doctor.output)}")]
-    return [flutter, *validators]
-
-
 # --------------------------------------------------------------------------- Python
 
 # Runs inside the candidate interpreter; one line of JSON keeps parsing robust.
@@ -487,58 +374,6 @@ def check_python(p: PlatformInfo) -> list[ToolResult]:
         pip = ToolResult("pip", Status.MISSING, hint="pip", detail=f"'{launcher} -m pip' failed: {_python_error(pip_res)}")
 
     return [python, pip, check_venv(exe)]
-
-
-# --------------------------------------------------------------------------- PHP
-
-
-def check_php(p: PlatformInfo) -> list[ToolResult]:
-    php = probe("php", ["php", "--version"], pattern=r"PHP (\d+)\.(\d+)\.(\d+)", min_version=MIN_VERSIONS["php"], hint="php")
-    # Composer runs on PHP, so it only works once php does; --no-ansi keeps the output parseable.
-    composer = probe("composer", ["composer", "--version", "--no-ansi", "--no-interaction"],
-                     pattern=r"Composer (?:version )?(\d+)\.(\d+)\.(\d+)", hint="composer", timeout=60)
-    return [php, composer]
-
-
-# --------------------------------------------------------------------------- Ruby
-
-
-def check_ruby(p: PlatformInfo) -> list[ToolResult]:
-    ruby = probe("ruby", ["ruby", "--version"], pattern=r"ruby (\d+)\.(\d+)\.(\d+)", min_version=MIN_VERSIONS["ruby"], hint="ruby")
-    if ruby.status is Status.WARN and p.system == "macos" and ruby.path == "/usr/bin/ruby":
-        ruby.detail = "macOS system Ruby is outdated and deprecated; install Homebrew Ruby"
-    tools = [
-        ruby,
-        probe("gem (RubyGems)", ["gem", "--version"], hint="ruby", timeout=60),
-        probe("bundler", ["bundle", "--version"], pattern=r"Bundler version (\d+)\.(\d+)\.(\d+)", hint="bundler", timeout=60),
-    ]
-    if p.system == "windows":
-        # RubyInstaller's MSYS2 devkit is what compiles gems with native extensions on Windows.
-        tools.append(probe("ridk (MSYS2 devkit)", ["ridk", "version"], pattern=r"version: (\d+)\.(\d+)\.(\d+)",
-                           required=False, hint="ridk", timeout=60))
-    return tools
-
-
-# --------------------------------------------------------------------------- Perl
-
-
-def check_perl(p: PlatformInfo) -> list[ToolResult]:
-    # `perl -v`: "This is perl 5, version 38, subversion 2 (v5.38.2) built for x86_64-linux-gnu-thread-multi"
-    perl = probe("perl", ["perl", "-v"], pattern=r"\(v(\d+)\.(\d+)\.(\d+)\)", min_version=MIN_VERSIONS["perl"], hint="perl")
-    if perl.status is Status.MISSING and p.system == "windows" and not perl.path:
-        git_perl = Path(os.environ.get("ProgramFiles", r"C:\Program Files"), "Git", "usr", "bin", "perl.exe")
-        if git_perl.is_file():
-            perl.detail = "only Git for Windows' internal perl exists (meant for git itself); install Strawberry Perl"
-    if not perl.path or perl.status is Status.MISSING:
-        return [perl]
-    # Ask perl whether CPAN.pm loads instead of running `cpan`, which may start an interactive setup.
-    cpan_res = run([perl.path, "-MCPAN", "-e", "print $CPAN::VERSION"], timeout=30)
-    cpan_version = parse_version(cpan_res.stdout, r"(\d+)\.(\d+)") if cpan_res.ok else None
-    cpan = (ToolResult("CPAN (module installer)", Status.OK, version=format_version(cpan_version), detail="CPAN.pm")
-            if cpan_version else
-            ToolResult("CPAN (module installer)", Status.MISSING, hint="cpan", detail="the CPAN module is not installed"))
-    cpanm = probe("cpanm (cpanminus)", ["cpanm", "--version"], pattern=r"version (\d+)\.(\d+)", required=False, hint="cpanm")
-    return [perl, cpan, cpanm]
 
 
 # --------------------------------------------------------------------------- Go
@@ -726,13 +561,7 @@ ENVIRONMENTS: dict[str, tuple[str, Callable[[PlatformInfo], list[ToolResult]]]] 
     "java": ("Java + Gradle", check_java),
     "kotlin": ("Kotlin", check_kotlin),
     "go": ("Go", check_go),
-    "rust": ("Rust", check_rust),
-    "dart": ("Dart", check_dart),
-    "flutter": ("Flutter", check_flutter),
     "python": ("Python 3", check_python),
-    "php": ("PHP + Composer", check_php),
-    "ruby": ("Ruby + Bundler", check_ruby),
-    "perl": ("Perl", check_perl),
     "node": ("JavaScript / TypeScript (Node.js)", check_node),
     "cpp": ("C / C++", check_cpp),
     "dotnet": ("C# (.NET)", check_dotnet),
