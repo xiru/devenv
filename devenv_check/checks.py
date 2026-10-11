@@ -492,6 +492,23 @@ def check_docker_daemon(docker: str) -> ToolResult:
     return ToolResult(name, Status.MISSING, detail=f"not reachable: {reason}", hint="docker_daemon")
 
 
+def uses_docker_io_and_k3d(p: PlatformInfo) -> bool:
+    """Ubuntu/Debian outside WSL: Docker comes from the docker.io apt package and Kubernetes from k3d."""
+    return p.family == "debian" and not p.wsl
+
+
+def check_docker_package(cli: ToolResult) -> None:
+    """Flag a Docker CLI that is not from the docker.io apt package (e.g. docker-ce or Docker Desktop)."""
+    dpkg_query = which("dpkg-query")
+    if dpkg_query is None:
+        return
+    res = run([dpkg_query, "-W", "-f=${Status}", "docker.io"], timeout=15)
+    if res.ok and "install ok installed" in res.stdout:
+        return
+    cli.status = Status.WARN
+    cli.detail = "not from the docker.io apt package; on Ubuntu use docker.io"
+
+
 def check_docker(p: PlatformInfo) -> list[ToolResult]:
     cli = probe("docker CLI", ["docker", "--version"], hint="docker")
     if cli.status is Status.MISSING and p.wsl and "WSL" in cli.detail:
@@ -499,10 +516,16 @@ def check_docker(p: PlatformInfo) -> list[ToolResult]:
         cli.detail = "Docker Desktop is installed on Windows, but WSL integration is off for this distro"
     if cli.status is Status.MISSING or not cli.path:
         return [cli]
+    if cli.status is Status.OK and uses_docker_io_and_k3d(p):
+        check_docker_package(cli)
     return [cli, check_docker_daemon(cli.path)]
 
 
 # --------------------------------------------------------------------------- Kubernetes
+
+
+# Docker Desktop's built-in Kubernetes; the recommended local cluster on Windows and WSL.
+DOCKER_DESKTOP_CONTEXT = "docker-desktop"
 
 
 def check_kube_context(kubectl: str) -> ToolResult:
@@ -514,19 +537,57 @@ def check_kube_context(kubectl: str) -> ToolResult:
                       required=False, hint="kube_context")
 
 
+def check_kube_cluster(kubectl: str, context: str) -> tuple[ToolResult, list[str]]:
+    """Ask the cluster behind `context` for its nodes; returns the result and the node names."""
+    name = "kube cluster"
+    res = run([kubectl, "--context", context, "--request-timeout=15s", "get", "nodes",
+               "-o", "jsonpath={.items[*].metadata.name}"], timeout=30)
+    nodes = res.stdout.split() if res.ok else []
+    if nodes:
+        return ToolResult(name, Status.OK, detail=f"{len(nodes)} node(s): {', '.join(nodes)}", required=False), nodes
+    reason = first_line(res.stderr) or first_line(res.stdout) or "no nodes"
+    return ToolResult(name, Status.WARN, detail=f"'{context}' not reachable: {reason}", required=False,
+                      hint="kube_cluster"), []
+
+
+def docker_desktop_cluster(nodes: list[str]) -> ToolResult:
+    # The kind provisioner names its nodes desktop-control-plane, desktop-worker...; kubeadm runs one docker-desktop node.
+    provisioner = "kubeadm" if nodes == [DOCKER_DESKTOP_CONTEXT] else "kind"
+    return ToolResult("local cluster", Status.OK, detail=f"Docker Desktop Kubernetes ({provisioner})",
+                      required=False, hint="local_cluster", provider=DOCKER_DESKTOP_CONTEXT)
+
+
 def check_kubernetes(p: PlatformInfo) -> list[ToolResult]:
     kubectl = probe("kubectl", ["kubectl", "version", "--client"], pattern=r"v(\d+)\.(\d+)\.(\d+)", hint="kubectl")
     tools = [kubectl]
+    context = cluster = None
+    nodes: list[str] = []
     if kubectl.path and kubectl.status is not Status.MISSING:
-        tools.append(check_kube_context(kubectl.path))
+        context = check_kube_context(kubectl.path)
+        tools.append(context)
+        if context.status is Status.OK:
+            cluster, nodes = check_kube_cluster(kubectl.path, context.detail)
+            tools.append(cluster)
     tools.append(probe("helm", ["helm", "version", "--short"], required=False, hint="helm"))
+
+    if uses_docker_io_and_k3d(p):
+        tools.append(first_available("local cluster", [_candidate("k3d", ["k3d", "version"])], required=False,
+                                     hint="local_cluster", missing_detail="k3d not found (on Ubuntu the local cluster is k3d)"))
+        return tools
+    # Docker Desktop's Kubernetes needs no kind/k3d/minikube CLI: a reachable docker-desktop context is enough.
+    if context and context.detail == DOCKER_DESKTOP_CONTEXT and cluster and cluster.status is Status.OK:
+        tools.append(docker_desktop_cluster(nodes))
+        return tools
+    if p.system == "windows" or p.wsl:
+        missing_detail = "no local cluster found: enable Kubernetes (kind) in Docker Desktop"
+    else:
+        missing_detail = "none of kind, minikube or k3d found (Docker Desktop's Kubernetes also works)"
     tools.append(first_available(
-        "local cluster tool",
+        "local cluster",
         [_candidate("kind", ["kind", "version"]),
          _candidate("minikube", ["minikube", "version", "--short"]),
          _candidate("k3d", ["k3d", "version"])],
-        required=False, hint="local_cluster",
-        missing_detail="none of kind, minikube or k3d found (Docker Desktop's Kubernetes also works)",
+        required=False, hint="local_cluster", missing_detail=missing_detail,
     ))
     return tools
 

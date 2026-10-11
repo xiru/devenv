@@ -5,7 +5,7 @@ from unittest import mock
 
 from devenv_check import checks
 from devenv_check.checks import Status
-from tests.helpers import LINUX, WSL, fail, fake_system, ok, run_smoke, tool
+from tests.helpers import LINUX, WSL, fail, fake_system, ok, platform_for, run_smoke, tool
 
 DOCKER_CLI = "Docker version 27.4.0, build bde2b89"
 
@@ -33,6 +33,30 @@ class CheckDockerTest(unittest.TestCase):
         with fake_system({"docker": lambda args: ok("27.4.0") if "info" in args else DOCKER_CLI}):
             cli, daemon = checks.check_docker(LINUX)
         self.assertEqual((cli.version, daemon.status), ("27.4.0", Status.OK))
+
+    def docker_io(self, status, platform=LINUX):
+        """check_docker with dpkg-query reporting the docker.io package `status`."""
+        with fake_system({"docker": lambda args: ok("27.4.0") if "info" in args else DOCKER_CLI,
+                          "dpkg-query": status}) as calls:
+            cli, _ = checks.check_docker(platform)
+        return cli, calls
+
+    def test_ubuntu_docker_io_package(self):
+        cli, calls = self.docker_io("install ok installed")
+        self.assertEqual((cli.status, cli.detail), (Status.OK, ""))
+        self.assertIn(["/usr/bin/dpkg-query", "-W", "-f=${Status}", "docker.io"], calls)
+
+    def test_ubuntu_docker_from_another_source(self):
+        cli, _ = self.docker_io(fail("dpkg-query: no packages found matching docker.io"))
+        self.assertEqual((cli.status, cli.hint), (Status.WARN, "docker"))
+        self.assertIn("docker.io", cli.detail)
+
+    def test_package_is_only_checked_on_ubuntu_outside_wsl(self):
+        for platform in (WSL, platform_for("fedora")):
+            with self.subTest(platform=platform.name):
+                cli, calls = self.docker_io(fail("not installed"), platform)
+                self.assertIs(cli.status, Status.OK)
+                self.assertFalse(any("dpkg-query" in call[0] for call in calls))
 
     def test_not_installed(self):
         with fake_system({}):

@@ -17,8 +17,8 @@ plus Git and Visual Studio Code:
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `make` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
-| Docker | `docker` CLI and a reachable engine/daemon | |
-| Kubernetes | `kubectl` | current kube context, `helm`, `k3d`/`kind`/`minikube` |
+| Docker | `docker` CLI and a reachable engine/daemon | on Ubuntu (not WSL): the CLI comes from the `docker.io` apt package |
+| Kubernetes | `kubectl` | current kube context and cluster reachability, `helm`, a local cluster (Docker Desktop Kubernetes with kind on Windows/WSL; `k3d` on Ubuntu; `k3d`/`kind`/`minikube` elsewhere) |
 | Visual Studio Code | `code`, plus the main extension per language (see below), installed and up to date | Bash, ESLint, WSL (Windows) |
 
 ### IntelliJ IDEA for Java and Kotlin
@@ -62,11 +62,19 @@ When something is missing it prints install commands for the detected OS.
   Gradle and Kotlin, which are not in winget (the command uses whichever is installed; with
   neither, the fix starts with installing Scoop, which needs no admin rights); MSVC Build Tools detected through `vswhere`.
 - **Ubuntu** — apt for system packages; SDKMAN!, nvm and the official Go tarball/snap where
-  Ubuntu's packages lag behind upstream.
+  Ubuntu's packages lag behind upstream. Docker is always Ubuntu's `docker.io` apt package and
+  the local Kubernetes cluster is always [k3d](https://k3d.io) running on it
+  (`sudo apt install -y docker.io`, the k3d install script, `k3d cluster create dev`); kind,
+  minikube, docker-ce and Docker Desktop are never suggested there. A Docker CLI that does not
+  come from `docker.io`, or a missing `k3d`, is reported as a warning.
 - **WSL running Ubuntu** — detected automatically. Windows binaries leaking in through the
   WSL PATH (e.g. `/mnt/c/Program Files/nodejs/npm`) are flagged, Docker Desktop with WSL
   integration is the recommended Docker/Kubernetes setup, and the Docker Desktop stub is
   recognised ("WSL integration is off for this distro").
+- **Kubernetes on Windows and WSL** — always Docker Desktop's own Kubernetes with the *kind*
+  cluster provisioning method (Settings > Kubernetes); k3d and minikube are never suggested.
+  A reachable `docker-desktop` context counts as the local cluster without any kind/k3d CLI,
+  and in WSL it is shared through Docker Desktop's WSL integration.
 
 Also covered: macOS (Homebrew), Fedora/RHEL (dnf), Arch (pacman), openSUSE (zypper), and
 distro‑independent installers for any other Linux.

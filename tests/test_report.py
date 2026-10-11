@@ -5,7 +5,7 @@ import json
 import unittest
 from unittest import mock
 
-from devenv_check import report
+from devenv_check import install_hints, report
 from devenv_check.checks import EnvResult, Status, ToolResult
 from devenv_check.report import Style, hello_summary, make_style, render_json, render_text
 from tests.helpers import LINUX, WINDOWS
@@ -156,7 +156,7 @@ class SummaryAndFixesTest(unittest.TestCase):
         self.assertIn("  ! install curl first", output)
         self.assertIn("    node, npm\n", output)
         self.assertIn("      " + report.hint_for("node", LINUX)[0], output)
-        self.assertIn("      docs: " + report.DOCS["node"], output)
+        self.assertIn("      docs: " + install_hints.DOCS["node"], output)
         self.assertIn("shfmt (optional)", output)
         self.assertIn("ext: Go (optional)", output)
         self.assertIn("      code --install-extension golang.go", output)
@@ -192,7 +192,7 @@ class JsonTest(unittest.TestCase):
         self.assertEqual(node["status"], "missing")
         self.assertEqual(node["hello_world"], {"passed": 0, "failed": 0, "skipped": 1})
         self.assertEqual(node["fix"], [{"hint": "node", "tools": ["node"], "commands": report.hint_for("node", LINUX),
-                                        "docs": report.DOCS["node"]}])
+                                        "docs": install_hints.DOCS["node"]}])
         self.assertNotIn("hello_world", go)
         self.assertEqual(go["fix"], [])
         self.assertEqual(data["notes"], ["note"])

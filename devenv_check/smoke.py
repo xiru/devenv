@@ -372,11 +372,14 @@ def smoke_docker(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[T
 
 def smoke_kubernetes(p: PlatformInfo, tools: list[ToolResult], work: Path) -> list[ToolResult]:
     kubectl, context_tool = _find(tools, "kubectl"), _find(tools, "kube context")
+    cluster = _find(tools, "kube cluster")
     name = "hello: Kubernetes pod"
     if not _usable(kubectl):
         return [_skipped(name, "kubectl not available")]
     if context_tool is None or context_tool.status is not Status.OK:
         return [_skipped(name, "no current kube context")]
+    if cluster is not None and cluster.status is not Status.OK:
+        return [_skipped(name, "cluster not reachable")]
 
     context = context_tool.detail
     pod = f"devenv-check-hello-{uuid.uuid4().hex[:6]}"

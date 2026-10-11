@@ -27,11 +27,31 @@ DOCS: dict[str, str] = {
     "docker_daemon": "https://docs.docker.com/engine/daemon/start/",
     "kubectl": "https://kubernetes.io/docs/tasks/tools/",
     "kube_context": "https://k3d.io/stable/usage/commands/k3d_cluster_create/",
+    "kube_cluster": "https://kubernetes.io/docs/tasks/debug/debug-cluster/",
     "helm": "https://helm.sh/docs/intro/install/",
     "local_cluster": "https://k3d.io/stable/#installation",
 }
 
 _K8S_LOCAL = ["k3d cluster create dev   (or: kind create cluster, or enable Kubernetes in Docker Desktop)"]
+_K8S_START = [
+    "Start the cluster behind the current context, e.g.: k3d cluster start dev   (or: docker start kind-control-plane)",
+    "kubectl config get-contexts   # or switch to a running cluster: kubectl config use-context <name>",
+]
+# On Windows (and WSL, which shares it) the local cluster is always Docker Desktop's own Kubernetes,
+# provisioned with kind; no separate kind/k3d/minikube CLI is needed.
+_DOCKER_DESKTOP_K8S = [
+    "Docker Desktop > Settings > Kubernetes > Enable Kubernetes, cluster provisioning method 'kind' > Apply & restart",
+    "kubectl config use-context docker-desktop",
+]
+_DOCKER_DESKTOP_K8S_START = [
+    "Start Docker Desktop and wait until it shows Kubernetes running (Settings > Kubernetes must be enabled)",
+    "kubectl config use-context docker-desktop",
+]
+_DOCKER_DESKTOP_K8S_DOCS = "https://docs.docker.com/desktop/features/kubernetes/"
+# On Ubuntu/Debian (outside WSL) the setup is always the distro's docker.io package plus a k3d cluster;
+# kind, minikube, docker-ce and Docker Desktop are never suggested there.
+_K3D_INSTALL = "curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"
+_K3D_CREATE = "k3d cluster create dev   (runs k3s in docker.io; kubectl then uses the k3d-dev context)"
 
 HINTS: dict[str, dict[str, list[str]]] = {
     "windows": {
@@ -59,10 +79,12 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "dotnet": ["winget install --id Microsoft.DotNet.SDK.10 -e"],
         "docker": ["wsl --install   (Docker Desktop needs WSL 2; reboot if asked)", "winget install --id Docker.DockerDesktop -e"],
         "docker_daemon": ["Start Docker Desktop and wait for 'Engine running'"],
-        "kubectl": ["winget install --id Kubernetes.kubectl -e"],
-        "kube_context": _K8S_LOCAL,
+        "kubectl": ["Docker Desktop ships kubectl: enable Kubernetes in Docker Desktop (Settings > Kubernetes)",
+                    "# or standalone: winget install --id Kubernetes.kubectl -e"],
+        "kube_context": _DOCKER_DESKTOP_K8S,
+        "kube_cluster": _DOCKER_DESKTOP_K8S_START,
         "helm": ["winget install --id Helm.Helm -e"],
-        "local_cluster": ["winget install --id k3d.k3d -e   (or: winget install --id Kubernetes.kind -e)"],
+        "local_cluster": _DOCKER_DESKTOP_K8S,
     },
     "macos": {
         "java": ["brew install --cask temurin@21"],
@@ -78,6 +100,7 @@ HINTS: dict[str, dict[str, list[str]]] = {
         "docker_daemon": ["open -a Docker   (or: colima start)"],
         "kubectl": ["brew install kubectl"],
         "kube_context": _K8S_LOCAL,
+        "kube_cluster": _K8S_START,
         "helm": ["brew install helm"],
         "local_cluster": ["brew install k3d   (or: brew install kind)"],
     },
@@ -109,8 +132,9 @@ HINTS: dict[str, dict[str, list[str]]] = {
             "sudo install -m 0755 kubectl /usr/local/bin/kubectl",
         ],
         "kube_context": _K8S_LOCAL,
+        "kube_cluster": _K8S_START,
         "helm": ["curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"],
-        "local_cluster": ["curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"],
+        "local_cluster": [_K3D_INSTALL],
     },
     # Debian / Ubuntu (also used inside WSL running Ubuntu, below the "wsl" table).
     "debian": {
@@ -139,8 +163,16 @@ HINTS: dict[str, dict[str, list[str]]] = {
             "sudo apt update && sudo apt install -y dotnet-sdk-8.0",
             "# newer SDKs on Ubuntu LTS: sudo add-apt-repository ppa:dotnet/backports && sudo apt install -y dotnet-sdk-10.0",
         ],
+        "docker": [
+            "sudo apt update && sudo apt install -y docker.io",
+            "sudo usermod -aG docker $USER   (then log out and back in)",
+        ],
+        "docker_daemon": ["sudo systemctl enable --now docker", "sudo usermod -aG docker $USER   (then log out and back in)"],
         "kubectl": ["sudo snap install kubectl --classic   (Ubuntu; or the curl method from kubernetes.io)"],
+        "kube_context": [_K3D_CREATE],
+        "kube_cluster": ["k3d cluster start dev", "kubectl config use-context k3d-dev"],
         "helm": ["sudo snap install helm --classic   (Ubuntu; or the get-helm-3 script from helm.sh)"],
+        "local_cluster": ["# needs Docker from the docker.io apt package (see Docker above)", _K3D_INSTALL, _K3D_CREATE],
     },
     # Linux under WSL: Docker and Kubernetes usually come from Docker Desktop on the Windows side.
     "wsl": {
@@ -155,9 +187,21 @@ HINTS: dict[str, dict[str, list[str]]] = {
             "Engine inside WSL: sudo systemctl enable --now docker   (without systemd: sudo service docker start)",
             "sudo usermod -aG docker $USER   (then run 'wsl --shutdown' in Windows and reopen the terminal)",
         ],
+        "kubectl": [
+            "Docker Desktop's WSL integration links kubectl into this distro once Kubernetes is enabled in Docker Desktop",
+            "# or standalone: sudo snap install kubectl --classic",
+        ],
         "kube_context": [
-            "Enable Kubernetes in Docker Desktop (Settings > Kubernetes); its context is shared with WSL",
-            "or create a local cluster: k3d cluster create dev",
+            "# In Docker Desktop on Windows; its context is shared with this distro through WSL integration:",
+            *_DOCKER_DESKTOP_K8S,
+        ],
+        "kube_cluster": [
+            *_DOCKER_DESKTOP_K8S_START,
+            "# also check Docker Desktop > Settings > Resources > WSL integration is enabled for this distro",
+        ],
+        "local_cluster": [
+            "# In Docker Desktop on Windows; its context is shared with this distro through WSL integration:",
+            _DOCKER_DESKTOP_K8S[0],
         ],
         "go": [
             "# snap needs systemd in WSL; the official tarball always works:",
@@ -424,6 +468,29 @@ PACKAGE_MANAGER_LABEL = {
     "suse": "zypper",
     "linux": "generic installers",
 }
+
+
+# Documentation that differs per platform, looked up like the hints (WSL first, then the family).
+PLATFORM_DOCS: dict[str, dict[str, str]] = {
+    "windows": dict.fromkeys(("kube_context", "kube_cluster", "local_cluster"), _DOCKER_DESKTOP_K8S_DOCS),
+    "wsl": {
+        **dict.fromkeys(("kube_context", "kube_cluster", "local_cluster"), _DOCKER_DESKTOP_K8S_DOCS),
+        "docker": DOCS["docker"],
+    },
+    # Ubuntu/Debian outside WSL (WSL is matched first): docker.io + k3d.
+    "debian": {
+        "docker": "https://packages.ubuntu.com/docker.io",
+        "kube_cluster": "https://k3d.io/stable/usage/commands/k3d_cluster_start/",
+    },
+}
+
+
+def docs_for(key: str, platform: PlatformInfo) -> str | None:
+    tables = (["wsl"] if platform.wsl else []) + [platform.family]
+    for table in tables:
+        if key in PLATFORM_DOCS.get(table, {}):
+            return PLATFORM_DOCS[table][key]
+    return DOCS.get(key)
 
 
 def manager_label(platform: PlatformInfo) -> str:

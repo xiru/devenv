@@ -8,7 +8,7 @@ import sys
 from dataclasses import asdict
 
 from .checks import EnvResult, Status, ToolResult
-from .install_hints import DOCS, hint_for, manager_label, prerequisite_notes
+from .install_hints import docs_for, hint_for, manager_label, prerequisite_notes
 from .platform_info import PlatformInfo
 
 
@@ -173,8 +173,8 @@ def render_text(platform: PlatformInfo, results: list[EnvResult], style: Style, 
                 out.append(f"    {style.status(names, Status.MISSING if required else Status.WARN)}")
                 for line in hint_for(key, platform):
                     out.append(f"      {style.dim(line) if line.startswith('#') else line}")
-                if key in DOCS:
-                    out.append(style.dim(f"      docs: {DOCS[key]}"))
+                if docs := docs_for(key, platform):
+                    out.append(style.dim(f"      docs: {docs}"))
             for tool in failures:
                 out.append(f"    {style.status(tool.name, Status.MISSING)}")
                 out.append(f"      {tool.detail}")
@@ -198,7 +198,7 @@ def render_json(platform: PlatformInfo, results: list[EnvResult]) -> str:
             passed, failed, skipped = hello_summary(env)
             data["hello_world"] = {"passed": passed, "failed": failed, "skipped": skipped}
         data["fix"] = [
-            {"hint": key, "tools": [t.name for t in tools], "commands": hint_for(key, platform), "docs": DOCS.get(key)}
+            {"hint": key, "tools": [t.name for t in tools], "commands": hint_for(key, platform), "docs": docs_for(key, platform)}
             for key, tools in _hint_groups(env)
         ]
         environments.append(data)
