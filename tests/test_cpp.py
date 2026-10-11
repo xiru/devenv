@@ -1,4 +1,4 @@
-"""C / C++: compilers (gcc, clang, MSVC), cmake, make and the C / C++ hello worlds."""
+"""C / C++: compilers (gcc, clang, MSVC), make and the C / C++ hello worlds."""
 
 import json
 import os
@@ -24,11 +24,10 @@ class CheckCppTest(unittest.TestCase):
             return {t.name: t for t in checks.check_cpp(platform)}
 
     def test_linux_gcc_and_make(self):
-        tools = self.check({"gcc": "gcc (Ubuntu 13.3.0-6ubuntu2) 13.3.0", "g++": "g++ 13.3.0", "cmake": "cmake version 3.28.3",
+        tools = self.check({"gcc": "gcc (Ubuntu 13.3.0-6ubuntu2) 13.3.0", "g++": "g++ 13.3.0",
                             "make": "GNU Make 4.3"})
         self.assertEqual((tools["C compiler"].provider, tools["C++ compiler"].provider), ("gcc", "g++"))
         self.assertEqual(tools["make"].provider, "make")
-        self.assertEqual(tools["cmake"].version, "3.28.3")
 
     def test_clang_as_fallback(self):
         tools = self.check({"clang": "clang version 18.1.3", "clang++": "clang version 18.1.3"})
@@ -37,7 +36,8 @@ class CheckCppTest(unittest.TestCase):
     def test_nothing_installed(self):
         tools = self.check({})
         self.assertEqual(tools["C compiler"].detail, "no gcc, clang or MSVC found")
-        self.assertFalse(tools["cmake"].required or tools["make"].required)
+        self.assertFalse(tools["make"].required)
+        self.assertNotIn("cmake", tools)
 
     def test_macos_prefers_clang(self):
         tools = self.check({"xcode-select": "/Library/Developer/CommandLineTools", "gcc": "Apple clang version 16.0.0",
@@ -116,7 +116,7 @@ class CppSmokeTest(unittest.TestCase):
     def test_c_and_cpp(self):
         smoke_run = run_smoke("cpp", [tool("C compiler", "/usr/bin/gcc", provider="gcc"),
                                       tool("C++ compiler", "/usr/bin/g++", provider="g++")], self.output)
-        c, cpp, _, _ = smoke_run.results
+        c, cpp, _ = smoke_run.results
         self.assertEqual((c.status, cpp.status), (Status.OK, Status.OK))
         self.assertEqual((c.detail, cpp.detail), ("compiled with gcc", "compiled with g++"))
         self.assertEqual(smoke_run.commands[0], ["/usr/bin/gcc", "hello.c", "-o", f"hello{EXE}"])
@@ -124,19 +124,19 @@ class CppSmokeTest(unittest.TestCase):
         self.assertEqual(smoke_run.written["hello.cpp"], smoke.CPP_SOURCE)
 
     def test_missing_compilers_are_skipped(self):
-        c, cpp, make, cmake = run_smoke("cpp", [tool("C compiler", status=Status.MISSING)]).results
-        self.assertEqual({r.status for r in (c, cpp, make, cmake)}, {Status.SKIPPED})
+        c, cpp, make = run_smoke("cpp", [tool("C compiler", status=Status.MISSING)]).results
+        self.assertEqual({r.status for r in (c, cpp, make)}, {Status.SKIPPED})
         self.assertEqual(cpp.detail, "skipped: no c++ compiler")
-        self.assertEqual((make.detail, cmake.detail), ("skipped: make not available", "skipped: cmake not available"))
+        self.assertEqual(make.detail, "skipped: make not available")
 
 
 GCC = [tool("C compiler", "/usr/bin/gcc", provider="gcc"), tool("C++ compiler", "/usr/bin/g++", provider="g++")]
 
 
-class BuildToolSmokeTest(unittest.TestCase):
+class MakeSmokeTest(unittest.TestCase):
     def results(self, tools, platform=LINUX):
         def output(args):
-            return "hello from C++" if Path(args[0]).parent.name in ("hello_cpp", "bin") else "hello from C"
+            return "hello from C++" if Path(args[0]).parent.name == "hello_cpp" else "hello from C"
 
         smoke_run = run_smoke("cpp", tools, output, platform)
         return {r.name: r for r in smoke_run.results}, smoke_run
@@ -153,37 +153,6 @@ class BuildToolSmokeTest(unittest.TestCase):
         results, _ = self.results(msvc, WINDOWS)
         self.assertEqual(results["hello: make"].status, Status.SKIPPED)
         self.assertIn("gcc or clang", results["hello: make"].detail)
-
-    def test_cmake_with_gcc(self):
-        results, smoke_run = self.results(GCC + [tool("cmake", "/usr/bin/cmake")])
-        cmake = results["hello: CMake project"]
-        self.assertEqual((cmake.status, cmake.detail), (Status.OK, "cmake configure + build with g++"))
-        configure, build, binary = smoke_run.commands[-3:]
-        self.assertEqual(configure, ["/usr/bin/cmake", "-S", ".", "-B", "build", "-DCMAKE_CXX_COMPILER=/usr/bin/g++"])
-        self.assertEqual(build, ["/usr/bin/cmake", "--build", "build", "--config", "Release"])
-        self.assertTrue(binary[0].endswith(str(Path("build", "bin", f"hello{EXE}"))))
-        self.assertIn("project(hello CXX)", smoke_run.written["CMakeLists.txt"])
-
-    def test_cmake_with_msvc_uses_the_default_generator(self):
-        msvc = tool("C++ compiler", r"C:\BuildTools", provider="MSVC")
-        results, smoke_run = self.results([msvc, tool("cmake", r"C:\cmake.exe")], WINDOWS)
-        self.assertIs(results["hello: CMake project"].status, Status.OK)
-        self.assertIn([r"C:\cmake.exe", "-S", ".", "-B", "build"], smoke_run.commands)
-
-    def test_cmake_with_mingw_on_windows(self):
-        mingw = [tool("C++ compiler", r"C:\mingw\g++.exe", provider="g++"), tool("cmake", r"C:\cmake.exe")]
-        results, _ = self.results(mingw, WINDOWS)
-        self.assertEqual(results["hello: CMake project"].detail, "skipped: cmake with g++ on Windows needs make")
-
-        make = tool("make", r"C:\mingw\mingw32-make.exe", provider="mingw32-make")
-        results, smoke_run = self.results(mingw + [make], WINDOWS)
-        self.assertIs(results["hello: CMake project"].status, Status.OK)
-        configure = next(c for c in smoke_run.commands if "-S" in c)
-        self.assertEqual(configure[-3:], ["-G", "MinGW Makefiles", r"-DCMAKE_MAKE_PROGRAM=C:\mingw\mingw32-make.exe"])
-
-    def test_cmake_without_cpp_compiler(self):
-        results, _ = self.results([tool("cmake", "/usr/bin/cmake")])
-        self.assertEqual(results["hello: CMake project"].detail, "skipped: no c++ compiler")
 
 
 if __name__ == "__main__":

@@ -437,7 +437,6 @@ def check_cpp(p: PlatformInfo) -> list[ToolResult]:
         return [
             ToolResult("C compiler", Status.MISSING, detail=detail, hint="cpp"),
             ToolResult("C++ compiler", Status.MISSING, detail=detail, hint="cpp"),
-            probe("cmake", ["cmake", "--version"], required=False, hint="build_tools"),
         ]
 
     c_candidates = [_candidate("gcc", ["gcc", "--version"]), _candidate("clang", ["clang", "--version"])]
@@ -455,8 +454,7 @@ def check_cpp(p: PlatformInfo) -> list[ToolResult]:
     return [
         first_available("C compiler", c_candidates, hint="cpp", missing_detail="no gcc, clang or MSVC found"),
         first_available("C++ compiler", cpp_candidates, hint="cpp", missing_detail="no g++, clang++ or MSVC found"),
-        probe("cmake", ["cmake", "--version"], required=False, hint="build_tools"),
-        first_available("make", make_candidates, required=False, hint="build_tools", missing_detail="make not found"),
+        first_available("make", make_candidates, required=False, hint="make", missing_detail="make not found"),
     ]
 
 

@@ -15,11 +15,11 @@ plus Git and Visual Studio Code:
 | Go | `go` (≥ 1.22) | Go bin directory (`GOBIN` / `GOPATH/bin`) on `PATH` |
 | Python 3 | a working Python 3 interpreter (≥ 3.11; `python3`/`python`, or the `py` launcher on Windows — Microsoft Store stubs are skipped), `pip`, and `venv` proven by creating a throwaway virtual environment | |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
-| C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` |
+| C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `make` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
 | Docker | `docker` CLI and a reachable engine/daemon | |
 | Kubernetes | `kubectl` | current kube context, `helm`, `k3d`/`kind`/`minikube` |
-| Visual Studio Code | `code`, plus the main extension per language (see below), installed and up to date | Bash, ESLint, CMake Tools, WSL (Windows) |
+| Visual Studio Code | `code`, plus the main extension per language (see below), installed and up to date | Bash, ESLint, WSL (Windows) |
 
 ### IntelliJ IDEA for Java and Kotlin
 
@@ -40,7 +40,7 @@ is a recommendation (*partial*), not a failure, and comes with install/update in
 | Go | `golang.go` |
 | Python | `ms-python.python` (includes Pylance and the debugger) |
 | JavaScript / TypeScript | built into VS Code; `dbaeumer.vscode-eslint` optional |
-| C / C++ | `ms-vscode.cpptools-extension-pack` (or `ms-vscode.cpptools`); `ms-vscode.cmake-tools` optional |
+| C / C++ | `ms-vscode.cpptools-extension-pack` (or `ms-vscode.cpptools`) |
 | C# | `ms-dotnettools.csdevkit` (or `ms-dotnettools.csharp`) |
 | Docker | `ms-azuretools.vscode-containers` (or `ms-azuretools.vscode-docker`) |
 | Kubernetes | `ms-kubernetes-tools.vscode-kubernetes-tools` |
@@ -138,7 +138,7 @@ running a tiny program in a temporary directory (deleted afterwards):
 | Java / Kotlin + Gradle | `javac` + `java`; with `gradle`, a Gradle `application` project via `gradle run --offline --no-daemon`; with `kotlinc`, `kotlinc hello.kt -include-runtime -d hello.jar`, then `java -jar hello.jar` |
 | Go | `go build` of a module (with `GOTOOLCHAIN=local`, so no toolchain download) + run |
 | JavaScript / TypeScript | `node hello.js`; `hello.ts` run with Node's built-in type stripping (Node ≥ 22.6; skipped on older versions) |
-| C / C++ | compile + run with gcc/g++, clang/clang++, or MSVC (loads `vcvars64.bat` automatically when `cl.exe` isn't on PATH); with `make`, a `Makefile` building the C program with gcc/clang; with `cmake`, a C++ `CMakeLists.txt` project configured, built and run (Visual Studio generator for MSVC, `MinGW Makefiles` for gcc/clang on Windows) |
+| C / C++ | compile + run with gcc/g++, clang/clang++, or MSVC (loads `vcvars64.bat` automatically when `cl.exe` isn't on PATH); with `make`, a `Makefile` building the C program with gcc/clang |
 | C# | `dotnet build` + `dotnet run` of a console project targeting the newest SDK |
 | Docker | `docker build` of a `FROM hello-world` image, `docker run`, then the image is removed |
 | Kubernetes | a `busybox` pod that echoes and is removed (`kubectl run --rm`) — **only** on local clusters (docker-desktop, kind-\*, minikube, k3d-\*, rancher-desktop, …). Any other context gets a server-side dry run, so nothing is ever created in a shared cluster |

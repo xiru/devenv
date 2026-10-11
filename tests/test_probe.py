@@ -86,7 +86,7 @@ class FirstAvailableTest(unittest.TestCase):
 
     def test_nothing_installed(self):
         tool = checks.first_available("make", [lambda: ToolResult("make", Status.MISSING)],
-                                      required=False, hint="build_tools", missing_detail="neither found")
+                                      required=False, hint="make", missing_detail="neither found")
         self.assertEqual((tool.name, tool.status, tool.detail, tool.required), ("make", Status.MISSING, "neither found", False))
 
     def test_candidate_helper_probes_with_a_label(self):

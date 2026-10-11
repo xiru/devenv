@@ -44,7 +44,6 @@ EXTENSIONS: list[ExtensionSpec] = [
     ExtensionSpec("ESLint (JS/TS)", ("dbaeumer.vscode-eslint",), required=False,
                   note="JavaScript/TypeScript language support is built into VS Code"),
     ExtensionSpec("C/C++", ("ms-vscode.cpptools-extension-pack", "ms-vscode.cpptools")),
-    ExtensionSpec("CMake", ("ms-vscode.cmake-tools",), required=False),
     ExtensionSpec("C#", ("ms-dotnettools.csdevkit", "ms-dotnettools.csharp")),
     ExtensionSpec("Docker / containers", ("ms-azuretools.vscode-containers", "ms-azuretools.vscode-docker")),
     ExtensionSpec("Kubernetes", ("ms-kubernetes-tools.vscode-kubernetes-tools",)),

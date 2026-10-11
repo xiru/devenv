@@ -76,7 +76,7 @@ class WhichTest(unittest.TestCase):
 
 class ParseVersionTest(unittest.TestCase):
     def test_generic_pattern(self):
-        self.assertEqual(parse_version("cmake version 3.29.3"), (3, 29, 3))
+        self.assertEqual(parse_version("GNU Make 4.4.1"), (4, 4, 1))
         self.assertEqual(parse_version("v22.3.0"), (22, 3, 0))
         self.assertEqual(parse_version("helm v3.16"), (3, 16))
         self.assertIsNone(parse_version("no digits here"))
