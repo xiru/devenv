@@ -71,7 +71,7 @@ class FirstAvailableTest(unittest.TestCase):
         def candidate(name, status):
             def probe():
                 calls.append(name)
-                return ToolResult(name, status, version="17.0.6", detail="extra" if name == "ninja" else "")
+                return ToolResult(name, status, version="17.0.6", detail="extra" if name == "never" else "")
             return probe
 
         tool = checks.first_available("C compiler", [candidate("gcc", Status.MISSING), candidate("clang", Status.OK),
@@ -81,13 +81,13 @@ class FirstAvailableTest(unittest.TestCase):
         self.assertEqual(calls, ["gcc", "clang"])  # stops at the first hit
 
     def test_keeps_the_candidate_detail(self):
-        tool = checks.first_available("make", [lambda: ToolResult("ninja", Status.WARN, detail="old")])
-        self.assertEqual((tool.status, tool.detail), (Status.WARN, "ninja; old"))
+        tool = checks.first_available("make", [lambda: ToolResult("make", Status.WARN, detail="old")])
+        self.assertEqual((tool.status, tool.detail), (Status.WARN, "make; old"))
 
     def test_nothing_installed(self):
-        tool = checks.first_available("make / ninja", [lambda: ToolResult("make", Status.MISSING)],
+        tool = checks.first_available("make", [lambda: ToolResult("make", Status.MISSING)],
                                       required=False, hint="build_tools", missing_detail="neither found")
-        self.assertEqual((tool.name, tool.status, tool.detail, tool.required), ("make / ninja", Status.MISSING, "neither found", False))
+        self.assertEqual((tool.name, tool.status, tool.detail, tool.required), ("make", Status.MISSING, "neither found", False))
 
     def test_candidate_helper_probes_with_a_label(self):
         with fake_system({"clang": "clang version 18.1.3"}):

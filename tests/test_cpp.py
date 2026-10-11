@@ -1,4 +1,4 @@
-"""C / C++: compilers (gcc, clang, MSVC), cmake, make / ninja and the C / C++ hello worlds."""
+"""C / C++: compilers (gcc, clang, MSVC), cmake, make and the C / C++ hello worlds."""
 
 import json
 import os
@@ -27,17 +27,17 @@ class CheckCppTest(unittest.TestCase):
         tools = self.check({"gcc": "gcc (Ubuntu 13.3.0-6ubuntu2) 13.3.0", "g++": "g++ 13.3.0", "cmake": "cmake version 3.28.3",
                             "make": "GNU Make 4.3"})
         self.assertEqual((tools["C compiler"].provider, tools["C++ compiler"].provider), ("gcc", "g++"))
-        self.assertEqual(tools["make / ninja"].provider, "make")
+        self.assertEqual(tools["make"].provider, "make")
         self.assertEqual(tools["cmake"].version, "3.28.3")
 
-    def test_clang_and_ninja_as_fallbacks(self):
-        tools = self.check({"clang": "clang version 18.1.3", "clang++": "clang version 18.1.3", "ninja": "1.11.1"})
-        self.assertEqual((tools["C compiler"].provider, tools["make / ninja"].provider), ("clang", "ninja"))
+    def test_clang_as_fallback(self):
+        tools = self.check({"clang": "clang version 18.1.3", "clang++": "clang version 18.1.3"})
+        self.assertEqual((tools["C compiler"].provider, tools["C++ compiler"].provider), ("clang", "clang++"))
 
     def test_nothing_installed(self):
         tools = self.check({})
         self.assertEqual(tools["C compiler"].detail, "no gcc, clang or MSVC found")
-        self.assertFalse(tools["cmake"].required or tools["make / ninja"].required)
+        self.assertFalse(tools["cmake"].required or tools["make"].required)
 
     def test_macos_prefers_clang(self):
         tools = self.check({"xcode-select": "/Library/Developer/CommandLineTools", "gcc": "Apple clang version 16.0.0",
@@ -53,7 +53,7 @@ class CheckCppTest(unittest.TestCase):
     def test_windows_prefers_msvc_and_accepts_mingw_make(self):
         tools = self.check({"gcc": "gcc 14.2.0", "mingw32-make": "GNU Make 4.4.1"}, WINDOWS, msvc=Status.OK)
         self.assertEqual((tools["C compiler"].provider, tools["C++ compiler"].provider), ("MSVC", "MSVC"))
-        self.assertEqual(tools["make / ninja"].provider, "mingw32-make")
+        self.assertEqual(tools["make"].provider, "mingw32-make")
 
     def test_windows_cl_on_path(self):
         tools = self.check({"cl": fail("Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35211 for x64")}, WINDOWS)

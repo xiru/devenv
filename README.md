@@ -22,7 +22,7 @@ plus Git and Visual Studio Code:
 | Ruby + Bundler | `ruby` (≥ 3.2; macOS's deprecated system Ruby is flagged), `gem`, `bundle` | `ridk` (RubyInstaller's MSYS2 devkit for native gems, Windows only) |
 | Perl | `perl` (≥ 5.32), the CPAN module installer (checked by loading `CPAN.pm`, so `cpan`'s interactive first-run setup never starts) | `cpanm` |
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
-| C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` or `ninja` |
+| C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
 | Docker | `docker` CLI and a reachable engine/daemon | `docker compose` |
 | Kubernetes | `kubectl` | current kube context, `helm`, `k3d`/`kind`/`minikube` |

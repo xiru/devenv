@@ -615,7 +615,7 @@ def check_cpp(p: PlatformInfo) -> list[ToolResult]:
 
     c_candidates = [_candidate("gcc", ["gcc", "--version"]), _candidate("clang", ["clang", "--version"])]
     cpp_candidates = [_candidate("g++", ["g++", "--version"]), _candidate("clang++", ["clang++", "--version"])]
-    make_candidates = [_candidate("make", ["make", "--version"]), _candidate("ninja", ["ninja", "--version"])]
+    make_candidates = [_candidate("make", ["make", "--version"])]
     if p.system == "windows":
         msvc = [_candidate("cl", ["cl"], pattern=r"Version (\d+)\.(\d+)\.(\d+)"), probe_msvc]
         c_candidates = msvc + c_candidates
@@ -629,8 +629,7 @@ def check_cpp(p: PlatformInfo) -> list[ToolResult]:
         first_available("C compiler", c_candidates, hint="cpp", missing_detail="no gcc, clang or MSVC found"),
         first_available("C++ compiler", cpp_candidates, hint="cpp", missing_detail="no g++, clang++ or MSVC found"),
         probe("cmake", ["cmake", "--version"], required=False, hint="build_tools"),
-        first_available("make / ninja", make_candidates, required=False, hint="build_tools",
-                        missing_detail="neither make nor ninja found"),
+        first_available("make", make_candidates, required=False, hint="build_tools", missing_detail="make not found"),
     ]
 
 
