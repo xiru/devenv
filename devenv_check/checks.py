@@ -509,13 +509,7 @@ def check_docker(p: PlatformInfo) -> list[ToolResult]:
         cli.detail = "Docker Desktop is installed on Windows, but WSL integration is off for this distro"
     if cli.status is Status.MISSING or not cli.path:
         return [cli]
-    compose = first_available(
-        "docker compose",
-        [_candidate("compose plugin", ["docker", "compose", "version"]),
-         _candidate("docker-compose (standalone)", ["docker-compose", "version"])],
-        required=False, hint="docker_compose", missing_detail="neither 'docker compose' nor 'docker-compose' found",
-    )
-    return [cli, check_docker_daemon(cli.path), compose]
+    return [cli, check_docker_daemon(cli.path)]
 
 
 # --------------------------------------------------------------------------- Kubernetes

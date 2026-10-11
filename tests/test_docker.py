@@ -1,4 +1,4 @@
-"""Docker: the CLI, the engine, compose and the image build / run hello world."""
+"""Docker: the CLI, the engine and the image build / run hello world."""
 
 import unittest
 from unittest import mock
@@ -29,25 +29,10 @@ class DaemonTest(unittest.TestCase):
 
 
 class CheckDockerTest(unittest.TestCase):
-    def test_cli_engine_and_compose_plugin(self):
-        with fake_system({"docker": lambda args: "Docker Compose version v2.31.0" if "compose" in args else
-                          ok("27.4.0") if "info" in args else DOCKER_CLI}):
-            cli, daemon, compose = checks.check_docker(LINUX)
+    def test_cli_and_engine(self):
+        with fake_system({"docker": lambda args: ok("27.4.0") if "info" in args else DOCKER_CLI}):
+            cli, daemon = checks.check_docker(LINUX)
         self.assertEqual((cli.version, daemon.status), ("27.4.0", Status.OK))
-        self.assertEqual((compose.provider, compose.version), ("compose plugin", "2.31.0"))
-
-    def test_standalone_compose(self):
-        def docker(args):
-            return fail("docker: 'compose' is not a docker command.") if "compose" in args else DOCKER_CLI
-
-        with fake_system({"docker": docker, "docker-compose": "docker-compose version 1.29.2"}):
-            _, _, compose = checks.check_docker(LINUX)
-        self.assertEqual(compose.provider, "docker-compose (standalone)")
-
-    def test_no_compose_is_optional(self):
-        with fake_system({"docker": lambda args: fail("unknown command") if "compose" in args else DOCKER_CLI}):
-            _, _, compose = checks.check_docker(LINUX)
-        self.assertEqual((compose.status, compose.required), (Status.MISSING, False))
 
     def test_not_installed(self):
         with fake_system({}):

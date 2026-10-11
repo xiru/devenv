@@ -18,7 +18,7 @@ plus Git and Visual Studio Code:
 | JavaScript / TypeScript | `node` (≥ 22), `npm`, `npx` (TypeScript is not checked: install it per project with `npm install --save-dev typescript`, never globally) | |
 | C / C++ | a C and a C++ compiler (gcc/g++, clang/clang++ or MSVC) | `cmake`, `make` |
 | C# | .NET SDK (≥ 8) — a runtime alone is not enough | |
-| Docker | `docker` CLI and a reachable engine/daemon | `docker compose` |
+| Docker | `docker` CLI and a reachable engine/daemon | |
 | Kubernetes | `kubectl` | current kube context, `helm`, `k3d`/`kind`/`minikube` |
 | Visual Studio Code | `code`, plus the main extension per language (see below), installed and up to date | Bash, ESLint, CMake Tools, WSL (Windows) |
 
