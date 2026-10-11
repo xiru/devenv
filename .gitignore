@@ -7,3 +7,4 @@ dist/
 venv/
 package.json
 package-lock.json
+.coverage
